@@ -1,0 +1,151 @@
+---
+title: "DATA 624 Predictive Analytics - Homework 1"
+author: "Sarah Wigodsky"
+date: "January 27, 2019"
+output: html_document
+---
+
+2.1)  Use the help function to explore what the series gold, woolyrnq and gas represent.
+
+The 'gold' series contains the daily morning gold prices in US dollars from January 1, 1985 through March 31, 1989.  
+The 'woolyrnq' series contais the quarterly production of woollen yarn in Ausralia.
+The 'gas' series contains data on:
+  - monthly Canadian gas production, US gasoline prices as traded in Cushing, OK from January 1991 through November 2006
+  - the price and per capita consumption of natural gas in 20 towns in Texas
+  - the Australian monthly gas production from 1956 through 1995
+  - the US motor gasoline product supplied in millions of barrels per day from February 2, 1991 through January 20, 2017
+  - the total quarterly gas production in Australia from the first quarter of 1956 through the second quarter of 2010
+  - the NIR spectra and octane numbers for 60 samples of gasoline
+  - the weekly US gasoline prices from 1990 to 2003
+  - the quarterly UK gas consumption from the first quarter of 1960 through the fourth quarter of 1986
+  - crude oil properties and gasoline yields
+  
+  
+a. Use autoplot() to plot each of these in separate plots.
+
+```{r gold_autoplot, echo=TRUE, message=FALSE, warning=FALSE}
+library(fpp2)
+#g <- ts(forecast::gold, start = 1985, frequency = 365.25)
+autoplot(forecast::gold) + ylab("Gold Price in US Dollars") +  ggtitle("Daily Morning Gold Prices")
+```
+
+There data ranges from January 1, 1985 through March 31, 1989.  However there are only 1,108 data points, which is fewer than 1,551 days, which is the number of days in that range.  It therefore is not possible to create a meaningful graph of gold price against the date.  
+
+The data displays an upward trend for the first 780 points followed by a downward trend for the remaining data.  There is a spike in gold price at around data point 780.
+
+```{r woolyrnq_autoplot, echo=TRUE, message=FALSE, warning=FALSE}
+autoplot(forecast::woolyrnq) + ylab("Production of Woollen Yarn in tonnes") +  ggtitle("Quarterly Production of Woollen Yarn in Australia")
+```
+
+The quarterly production of woollen yarn in Australia follows a seasonal pattern.  There is a upward trend in wool production from 1965 through 1970.  From 1970 through 1977 there is a downward trend in wool production.  Wool prediction reaches a minimum in 1975.  Wool produciton then levels out, with the exception of the seasonal changes.  There is an upward trend in wool production from 1983 through 1986. 
+
+```{r gas_autoplot, echo=TRUE, message=FALSE, warning=FALSE}
+autoplot(forecast::gas) + ylab("Gas Production") +  ggtitle("Monthly Gas Production in Australia")
+```
+
+The monthly gas production in Australia displays an upward trend that starts around 1970.  In addition, the monthly gas production in Australia follows a seasonal pattern.
+
+b. What is the frequency of each series? Hint: apply the frequency() function.
+```{r freq_gold, echo=FALSE}
+frequency(gold)
+```
+
+The frequency over which the pattern in gold prices repeats is 1 day.  Since there is one data point per day, there is not a seasonal pattern in the price of gold.
+
+
+```{r freq_wool, echo=FALSE}
+frequency(woolyrnq)
+```
+
+The frequency of wool production is 4.  The pattern in the production of wool repeats every 4 quarters, or each year.  
+
+```{r freq_gas, echo=FALSE}
+frequency(gas)
+```
+
+The frequency for Australian gas production is every 12 months.  The pattern in the production of gas in Australia repeats every 12 months.
+
+c. Use which.max() to spot the outlier in the gold series. Which observation was it?
+```{r max_gold, echo=FALSE}
+which.max(gold)
+```
+
+The outlier in the gold series occurs at day 770.
+
+
+2.2)  Download the file tute1.csv from the book website, open it in Excel (or some other spreadsheet application), and review its contents. You should find four columns of information. Columns B through D each contain a quarterly series, labelled Sales, AdBudget and GDP. Sales contains the quarterly sales for a small company over the period 1981-2005. AdBudget is the advertising budget and GDP is the gross domestic product. All series have been adjusted for inflation.
+
+a.  You can read the data into R with the following script:
+
+```{r tute1, echo=FALSE}
+tute1 <- read.csv("tute1.csv", header=TRUE)
+View(tute1)
+```
+
+
+b. Convert the data to time series
+```{r covert-to-timeseries, echo=FALSE}
+mytimeseries <- ts(tute1[,-1], start=1981, frequency=4)
+```
+
+(The [,-1] removes the first column which contains the quarters as we don't need them now.)
+
+c. Construct time series plots of each of the three series
+```{r timeseriesplot, echo=FALSE}
+autoplot(mytimeseries, facets=TRUE)
+```
+There is a seasonal pattern in the quarterly sales of a small company (Sales) and the advertising budget (AdBudget).  The pattern in sales corresponds to the pattern in the advertising budget.  The GDP displays seasonal trends as well as cyclicity. The peaks in sales and advertising budget correspond to dips in the GDP.
+
+Check what happens when you don't include facets=TRUE.
+```{r timeseriesplotFACETSFALSE, echo=FALSE}
+autoplot(mytimeseries, facets=FALSE)
+```
+
+When facets=FALSE, the values for each of the series are graphed on the same axis.  It enables the viewer to see how the values for each variable compare with each other.  It also enables the viewer to easily compare the difference between the maximum and minimum for each variable.  The fluctuation in ad budget is lower than the fluctuation in sales.
+
+2-3) Download some monthly Australian retail data from the book website. These represent retail sales in various categories for different Australian states, and are stored in a MS-Excel file.
+
+a. You can read the data into R with the following script:
+```{r load-data-retail, echo=FALSE}
+retaildata <- readxl::read_excel("retail.xlsx", skip=1)
+```
+The second argument (skip=1) is required because the Excel sheet has two header rows.
+
+b. Select one of the time series as follows (but replace the column name with your own chosen column):
+```{r retaildata, echo=FALSE}
+myts <- ts(retaildata[,"A3349399C"],frequency=12, start=c(1982,4))
+head(myts)
+```
+
+c. Explore your chosen retail time series using the following functions:
+autoplot(), ggseasonplot(), ggsubseriesplot(), gglagplot(), ggAcf()
+Can you spot any seasonality, cyclicity and trend? What do you learn about the series?
+```{r autoplot-New-South-Wales-Clothing-retailing, echo=FALSE}
+autoplot(myts) + ylab("Retail Clothing Sales") + ggtitle("New South Wales - Clothing Sales")
+```
+
+Using autoplot, it is evident that there is yearly seasonality in retail clothing sales.  There is also an upward trend.
+
+```{r ggseasonplot-New-South-Wales-Clothing-retailing, echo=FALSE}
+ggseasonplot(myts) + ylab("Retail Clothing Sales") + ggtitle("New South Wales - Clothing Sales")
+```
+
+The seasonplot displays the sales for each year on top of each other.  The upward trend is visible by looking at the values progressing from the earliest year in red on the bottom of the graph up to pink at higher values on the graph.  The seasonality is also visible, as there is often a dip in February, an increase in sales from February until June, a slight dip in sales from June through August, an increase in clothing sales from August through Novemeber, and a large increase in sales at the end of the year
+
+```{r ggsubseriesplot-New-South-Wales-Clothing-retailing, echo=FALSE}
+ggsubseriesplot(myts) + ylab("Retail Clothing Sales") + ggtitle("New South Wales - Clothing Sales")
+```
+
+The blue lines in the subseries plot represent the mean for each month.  The mean value in clothing sales dips in February, increases until May, decreases until August, increases through Novemeber and then increases substantially in December.  In this way, the seasonality of clothing sales is apparent.  The upward angle of the retail sales at each month displays the upward trend in sales over the years.
+
+```{r gglagplot-New-South-Wales-Clothing-retailing, echo=FALSE}
+gglagplot(myts) + ylab("Retail Clothing Sales") + ggtitle("Lag Plots of Clothing Sales in New South Wales")
+```
+
+The relationship is strongly positive for lag equals 12, indicating a strong seasonality of frequency 12 months.
+
+```{r ggAcf-New-South-Wales-Clothing-retailing, echo=FALSE}
+ggAcf(myts) + ylab("Retail Clothing Sales") + ggtitle("Autocorrelation Function of Clothing Sales in New South Wales")
+```
+
+The autocorrelation plot displays spikes every 12 months, indicating seasonality with a frequency of 12 months.  The lag decreases over time which indicates a trend in the data because the observations that are close together in time are close together in size.
