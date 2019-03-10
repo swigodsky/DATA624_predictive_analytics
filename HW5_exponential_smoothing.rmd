@@ -1,0 +1,256 @@
+---
+title: "HW 5 Exponential Smoothing"
+author: "Sarah Wigodsky"
+date: "March 7, 2019"
+output: html_document
+---
+
+7.1) Consider the pigs series - the number of pigs slaughtered in Victoria each month. 
+a) Use the ses() function in R to find the optimal values of ?? and ???0, and generate forecasts for the next four months.
+
+```{r pigs-ses, echo=TRUE, fig.width=5, message=FALSE, warning=FALSE}
+library(fpp2)
+library(ggplot2)
+fc_pigs <- ses(pigs, h=4)
+fc_pigs$model
+fc_pigs
+```
+
+??=0.2971
+???0= 77260
+
+b) Compute a 95% prediction interval for the first forecast using y±1.96 s where s is the standard deviation of the residuals. Compare your interval with the interval produced by R.
+
+```{r pigs_prediction, echo=TRUE}
+
+yhigh = 98816.41 + 1.96*(sd(fc_pigs$residuals)) 
+ylow = 98816.41 - 1.96*(sd(fc_pigs$residuals)) 
+
+ylow
+yhigh
+```
+
+I calculated the 95% confidence interval to be between 78679.97-118,952.8.
+R calculated the 95% confidence interval to be between 78611.97-119,020.8.
+
+These are close, but not exactly the same.  I expect the difference is due to the rounding of the point forecast and the rounding of 1.96.
+
+7.5) Data set books contains the daily sales of paperback and hardcover books at the same store. The task is to forecast the next four days' sales for paperback and hardcover books. 
+
+a) Plot the series and discuss the main features of the data.
+```{r books_plot, echo=TRUE}
+autoplot(books) + ylab("Number of Books Sales at the Same Store") + xlab("Day") + ggtitle("Daily Book Sales")
+```
+
+The graph displays the daily sales of paperback books and hardcover books.  The sales of both paperback books and hardcover books appears to have an upward trend over the course of the month.  There is a cyclic pattern in the sales of paperback and hardcover books, but I can't identify a set seasonality for each.  The peaks and troughs in paperback and hardcover sales do not consistently correspond to each other.
+
+b) Use the ses() function to forecast each series, and plot the forecasts.
+```{r ses_books, echo=TRUE}
+#book_start <- window(books, start=1)
+pbBooks = books[,1]
+hcBooks = books[,2]
+ses_paper_books <- ses(pbBooks, h=4)
+ses_hc_books <- ses(hcBooks, h=4)
+autoplot(ses_paper_books) +
+  autolayer(fitted(ses_paper_books), series="SES Model") +
+  ylab("Number of Paperback Books Sold at the Same Store") + xlab("Day") + ggtitle("Daily Paperback Book Sales")
+```
+
+The simple exponential smoothing model for the sales of paperback books deviates from the data.  The ses model shows a much less variation from one day to the next than the actual data.  The peaks and troughs in the data do not correspond to the peaks and troughs in the ses model.  The 95% confidence interval for the prediction has a very large range, from about 82-275 books sold on day 31.
+
+```{r ses_hc, echo=TRUE}
+autoplot(ses_hc_books) +
+  autolayer(fitted(ses_hc_books), series="SES Model") +
+  ylab("Number of Harcover Books Sold at the Same Store") + xlab("Day") + ggtitle("Daily Hardcover Books Sales")
+```
+
+The simple exponential smoothing model for the sales of hardcover books deviates from the data.  The ses model shows a upward trend that corresponds to the trend in the data.  Again there is much less variation from one day to the next than the actual data.  The peaks and troughs in the data do not correspond to the peaks and troughs in the ses model.  The 95% confidence interval for the prediciton is very wide, ranging from about 175-305 books sold on day 31.
+
+c) Compute the RMSE values for the training data in each case.
+```{r rmse_pb_books, echo=TRUE}
+pb_e <- tsCV(pbBooks, ses, h=4)
+rmse_pb <- sqrt(mean(pb_e^2, na.rm=TRUE))
+rmse_pb
+```
+
+The RMSE for the simple exponential smoothing model for paperback books is 38.4.  The model's prediction is off on average by about 38 paperback books sold each day.
+
+```{r rmse_hc_books, echo=TRUE}
+hc_e <- tsCV(hcBooks, ses, h=4)
+rmse_hc <- sqrt(mean(hc_e^2, na.rm=TRUE))
+rmse_hc
+```
+
+The RMSE for the simple exponential smoothing model for hardcover books is 38.7.  The model's prediction is off on average by about 39 hardcover books sold each day.
+
+
+7.6) a)Now apply Holt's linear method to the paperback and hardback series and compute four-day forecasts in each case.
+```{r holt-pbbooks, echo=TRUE, warning=FALSE, message=FALSE}
+fc_holt_pb <- holt(pbBooks, h=4)
+fc_holt_hc <- holt(hcBooks, h=4)
+autoplot(fc_holt_pb) +
+  autolayer(fitted(fc_holt_pb), series="Holt Model", PI=FALSE) +
+  autolayer(fitted(ses_paper_books), series="SES Model") +
+  ylab("Number of Paperback Books Sales at the Same Store") + xlab("Day") + ggtitle("Daily Paperback Book Sales")
+```
+
+The Holt exponential model incorporates a trend component.  The Holt model for paperback book sales displays an increasing trend.  The 95% confidence interval is very wide, and ranges from about 145-275 books sold on day 31.  This 95% confidence interval is narrower than the one for the ses model.
+
+```{r holthcbbooks, echo=TRUE, warning=FALSE, message=FALSE}
+autoplot(fc_holt_hc) +
+  autolayer(fitted(fc_holt_hc), series="Holt Model", PI=FALSE) +
+  autolayer(fitted(ses_hc_books), series="SES Model") +
+  ylab("Number of Hardcover Books Sales at the Same Store") + xlab("Day") + ggtitle("Daily Hardcover Book Sales")
+```
+
+The Holt model for hardcover book sales displays an increasing trend.  The 95% confidence interval is wide, and ranges from about 190-310 books sold on day 31.  This 95% confidence interval is a little narrower than the one for the ses model.
+
+b+c) Compare the RMSE measures of Holt's method for the two series to those of simple exponential smoothing in the previous question. (Remember that Holt's method is using one more parameter than SES.) Discuss the merits of the two forecasting methods for these data sets.  Compare the forecasts for the two series using both methods. Which do you think is best?
+
+```{r rmse-holt-pb, echo=TRUE}
+pb_holt_e <- tsCV(pbBooks, holt, h=4)
+rmse_holt_pb <- sqrt(mean(pb_holt_e^2, na.rm=TRUE))
+rmse_holt_pb
+```
+
+The RMSE for paperback book sales is 46.  This is higher than the RMSE for the simple exponential smoothing method.
+
+```{r rmse-holt-hc, echo=TRUE}
+hc_holt_e <- tsCV(hcBooks, holt, h=4)
+rmse_holt_hc <- sqrt(mean(hc_holt_e^2, na.rm=TRUE))
+rmse_holt_hc
+```
+
+The RMSE for hardcover book sales is 39.  This is higher than the RMSE for the simple exponential smoothing method.
+
+The root mean square errors are higher for the Holt model.  The Holt model just follows the trend in the data.  Even though the RMSE is higher, the 95% confidence interval for the Holt method is narrower and I believe it will do a better job in forecasting than the ses model.
+
+d) Calculate a 95% prediction interval for the first forecast for each series, using the RMSE values and assuming normal errors. Compare your intervals with those produced using ses and Holt.
+
+####Confidence Interval Paperback Books SES Model
+```{r pred-interval-pb, echo=TRUE}
+ses_paper_books
+ses_paper_books$mean[1]-1.96*rmse_pb
+ses_paper_books$mean[1]+1.96*rmse_pb
+```
+
+The 95% prediction interval I calculated using the RMSE for paperback books with the ses method is from 132-282 books sold.  The ses model's 95% interval is between 139-275 books.
+
+####Confidence Interval Paperback Books Holt Model
+```{r pred-interval-holt, echo=TRUE}
+fc_holt_pb
+fc_holt_pb$mean[1]-1.96*rmse_holt_pb
+fc_holt_pb$mean[1]+1.96*rmse_holt_pb
+```
+
+The 95% prediction interval I calculated using the RMSE for paperback books with the Holt method is from 119-299 books sold.  The Holt model's 95% interval is between 144-275 books.
+
+####Confidence Interval Hardcover Books SES Model
+```{r pred-interval-pb, echo=TRUE}
+ses_hc_books
+ses_hc_books$mean[1]-1.96*rmse_hc
+ses_hc_books$mean[1]+1.96*rmse_hc
+```
+
+The 95% prediction interval I calculated using the RMSE for hardcover books with the ses method is from 164-315 books sold.  The ses model's 95% interval is between 175-304 books.
+
+####Confidence Interval Harcover Books Holt Model
+```{r pred-interval-holt, echo=TRUE}
+fc_holt_hc
+fc_holt_hc$mean[1]-1.96*rmse_holt_hc
+fc_holt_hc$mean[1]+1.96*rmse_holt_hc
+```
+
+The 95% prediction interval I calculated using the RMSE for hardcover books with the Holt method is from 172-327 books sold.  The Holt model's 95% interval is between 193-307 books.
+
+In each case, the 95% confidence interval using the RMSE was larger than the confidence interval predicted by the model.  Confidence intervals should be calculated using the standard error, which is not equivalent to the RMSE.
+
+
+#```{r forecasts, echo=FALSE,fig.height=4.5, fig.width=4.5}
+#par(mfrow=c(1,2))
+#b<-autoplot(fc_paper_books)
+#a<-autoplot(fc_holt_pb)
+#print(a, position = c(0, 0, 0.5, 1), more = TRUE)
+#print(b, position = c(0.5, 0, 1, 1))
+#```
+
+7.7) For this exercise use data set eggs, the price of a dozen eggs in the United States from 1900-1993. Experiment with the various options in the holt() function to see how much the forecasts change with damped trend, or with a Box-Cox transformation. Try to develop an intuition of what each argument is doing to the forecasts.
+[Hint: use h=100 when calling holt() so you can clearly see the differences between the various options when plotting the forecasts.]  Which model gives the best RMSE?
+```{r eggs, echo=TRUE}
+fc_holt_eggs <- holt(eggs, h=100)
+fc_holt_eggs_damped <- holt(eggs, damped=TRUE, h=100)
+fc_holt_eggs_damped[["model"]]
+fc_holt_eggs_boxcox <- holt(eggs, lambda=0.5, h=100)
+
+
+autoplot(eggs) +
+  autolayer(fc_holt_eggs, series="Holt's method", PI=FALSE) +
+  autolayer(fc_holt_eggs_damped, series="Damped Holt's method phi=0.8", PI=FALSE) +
+  autolayer(fc_holt_eggs_boxcox, series="Box Cox", PI=FALSE) +
+  ggtitle("Forecasts from Holt's method") + xlab("Year") +
+  ylab("Price of a Dozen Eggs in the United States (dollars)") +
+  guides(colour=guide_legend(title="Forecast"))
+
+
+eggs_holt_error <- tsCV(eggs, holt, h=100)
+rmse_holt_eggs <- sqrt(mean(eggs_holt_error^2, na.rm=TRUE))
+rmse_holt_eggs
+
+eggs_damped_holt_error <- tsCV(eggs, holt, damped=TRUE, h=100)
+rmse_holt_eggs_damped <- sqrt(mean(eggs_damped_holt_error^2, na.rm=TRUE))
+rmse_holt_eggs_damped
+
+eggs_boxcox_error <- tsCV(eggs, holt, lambda=0.5, h=100)
+rmse_boxcox_eggs<- sqrt(mean(eggs_boxcox_error^2, na.rm=TRUE))
+rmse_boxcox_eggs
+```
+
+The forecast from Holt's method maintains a downward trend that the data possesses.  The forecast from the damped Holt's method is a horizontal line, and appears to be the same as the naive prediction.  The forecast from the Box Cox transformation of the Holt's method is between the other two predictions.  The root mean square error is signficantly lower from the Box Cox transformation.
+
+7-8) Recall your retail time series data (from Exercise 3 in Section 2.10). 
+a) Why is multiplicative seasonality necessary for this series?
+```{r load-data-retail, echo=TRUE}
+retaildata <- readxl::read_excel("retail.xlsx", skip=1)
+myts <- ts(retaildata[,"A3349399C"],frequency=12, start=c(1982,4))
+autoplot(myts) + ylab("Retail Clothing Sales") + ggtitle("New South Wales - Clothing Sales")
+```
+
+Multiplicative seasonality is necessary because the seasonal variation changes.
+
+b) Apply Holt-Winters' multiplicative method to the data. Experiment with making the trend damped.
+```{r hw, echo=TRUE}
+retail_hw <- hw(myts,seasonal="multiplicative", h=10)
+retail_hw_damped <- hw(myts,seasonal="multiplicative", damped=TRUE, h=10)
+autoplot(myts) +
+  autolayer(retail_hw, series="HW multiplicative forecasts", PI=FALSE) +
+  autolayer(retail_hw_damped, series="Damped HW multiplicative forecasts", PI=FALSE) +
+  xlab("Year") +
+  ylab("Retail Clothing Sales") +
+  ggtitle("New South Wales - Clothing Sales") +
+  guides(colour=guide_legend(title="Forecast"))
+```
+
+c) Compare the RMSE of the one-step forecasts from the two methods. Which do you prefer?
+```{r rmsehw, echo=TRUE}
+retailhw_error <- tsCV(myts, hw, seasonal="multiplicative", h=1)
+rmse_retailhw <- sqrt(mean(retailhw_error^2, na.rm=TRUE))
+rmse_retailhw
+
+retailhw_error_damped <- tsCV(myts, hw, seasonal="multiplicative", damped=TRUE, h=1)
+rmse_retailhw_damped<- sqrt(mean(retailhw_error_damped^2, na.rm=TRUE))
+rmse_retailhw_damped
+
+```
+
+The root mean square error is slightly lower for the Holt Winter method that is not damped.
+
+d) Check that the residuals from the best method look like white noise.
+```{r white-noise, echo=TRUE}
+checkresiduals(retail_hw)
+```
+
+There is no pattern in the residuals.  The residuals are centered around zero and the distribution is nearly normal.
+About 91% of the residuals lie outside the boundary that would indicate white noise. A value less than 5% would indicate that the residuals were uncorrelated. 
+
+e) Now find the test set RMSE, while training the model to the end of 2010. Can you beat the seasonal naïve approach from Exercise 8 in Section 3.7?
+
