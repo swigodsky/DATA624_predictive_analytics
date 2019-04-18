@@ -1,0 +1,108 @@
+---
+title: "DATA 624 HW 9"
+author: "Sarah Wigodsky"
+date: "April 15, 2019"
+output: html_document
+---
+
+Kuhn and Johnson
+
+8.1)  Recreate the simulated data from Exercise 7.2
+```{r sim-data, echo=TRUE, warning=FALSE, message=FALSE, cache=TRUE}
+library(mlbench)
+library(caret)
+set.seed(200)
+simulated <- mlbench.friedman1(200, sd=1)
+simulated <- cbind(simulated$x,simulated$y)
+simulated <- as.data.frame(simulated)
+colnames(simulated) [ncol(simulated)] <- "y"
+head(simulated)
+```
+
+a) Fit a random forest model to all of the predictors, then estimate the variable importance scores.
+```{r random-forest-simulated, echo=TRUE, warning=FALSE, message=FALSE, cache=TRUE}
+library(randomForest)
+set.seed(200)
+model1 <- randomForest(y ~ ., data=simulated, 
+                       importance=TRUE,
+                       ntree=1000)
+rfImp1 <- varImp(model1, scale=FALSE)
+rfImp1
+```
+
+The random forest did not significantly use the uninformative predictors predictors, V6-V10.  The order of importance is: V1, V4, V2, V5, V3.
+
+b) Now add an additional predictor that is highly correlated with one of the informative predictors.  Fit another random forest model to these data.  
+```{r random-forest-correlated-pred,, echo=TRUE, warning=FALSE, message=FALSE,cache=TRUE}
+set.seed(200)
+simulated$duplicate1 <- simulated$V1 + rnorm(200)*.1
+cor(simulated$duplicate1, simulated$V1)
+model2 <- randomForest(y ~ ., data=simulated, 
+                       importance=TRUE,
+                       ntree=1000)
+rfImp2 <- varImp(model2, scale=FALSE)
+rfImp2
+```
+
+V1 and duplicate1 are highly correlated.  The correlation is 0.94.
+The importance score of V1 decreased from 8.6 to 6.0 when another predictor that is highly correlated with V1 was added. The order of importance is now V4, V1, V2, V5, V3.
+
+What happens when you add another predictor that is also highly correlated with V1?
+```{r random-forest-correlated-pred2, echo=TRUE, warning=FALSE, message=FALSE,cache=TRUE}
+set.seed(200)
+simulated$duplicate2 <- simulated$V1 + rnorm(200)*.1
+cor(simulated$duplicate2, simulated$V1)
+model3 <- randomForest(y ~ ., data=simulated, 
+                       importance=TRUE,
+                       ntree=1000)
+rfImp3 <- varImp(model3, scale=FALSE)
+rfImp3
+```
+
+The importance score of V1 decreased further to 4.8 when yet another predictor that is highly correlated with V1 was added. Now the order of importance is V4, V2, V1, V5, V3.
+
+c) Use the cforest function in the party package to fit a random forest model using conditional inference trees.  The party package function varimp can calculate predictor importance.  The conditional argument of that function toggles between the traditional importance measure and the modified version described in Strobl et al (2007).  Do these importances show the same patterns the traditional random forest model?
+
+```{r cforest, echo=TRUE, warning=FALSE, message=FALSE, cache=TRUE}
+library(party)
+set.seed(200)
+simulated_removedups <- subset(simulated, select=-c(duplicate1,duplicate2))
+model4 <- cforest(y ~., data=simulated_removedups)
+rfImp4 <- varimp(model4)
+sort(rfImp4)
+```
+
+The importances show the same patterns as the traditional random forest model: V1, V4, V2, V5, V3.
+
+d) Repeat this process with different tree models, such as boosted trees and Cubist.  Does the same pattern occur?
+
+```{r boosted-trees, echo=TRUE, warning=FALSE, message=FALSE, cache=TRUE}
+set.seed(200)
+library(gbm)
+#gbmModel <- gbm(y ~ ., data=simulated_removedups, distribution = "gaussian")
+gbmGrid <- expand.grid(interaction.depth =seq(1,6, by=2),
+                       n.trees=seq(100,1000,by=50),
+                       shrinkage=c(0.01,0.1),
+                       n.minobsinnode = c(5, 10, 20, 30))
+gbmTune <- train(y ~ ., data=simulated_removedups,
+                 method="gbm",
+                 tuneGrid = gbmGrid,
+                 verbose=FALSE)
+
+rfImp5 <- varImp(gbmTune)
+rfImp5
+```
+
+The boosted trees model gives the same pattern of importance for the predictors: V1, V4, V2, V5, V3.
+
+```{r cubist, echo=TRUE, warning=FALSE, message=FALSE, cache=TRUE}
+set.seed(200)
+library(Cubist)
+cubistTuned <- train(y ~ ., data=simulated_removedups,
+                     method="cubist")
+rfImp6 <- varImp(cubistTuned)
+rfImp6
+```
+
+The Cubist model gave a different order of importance to the predictor variables.
+:V1,V2,V4,V3,V5 
