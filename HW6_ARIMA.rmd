@@ -1,0 +1,376 @@
+---
+title: "HW 6 ARIMA"
+author: "Sarah Wigodsky"
+date: "March 18, 2019"
+output: html_document
+---
+
+```{r load-libraries, echo=TRUE, message=FALSE, warning=FALSE}
+library(fpp2)
+library(urca)
+```
+
+8.1) Figure 8.31 shows the ACFs for 36 random numbers, 360 random numbers and 1,000 random numbers. 
+a) Explain the differences among these figures. Do they all indicate that the data are white noise?
+![](C:/Users/Swigo/Desktop/Sarah/DATA624_Predictive_Analytics/problem8_1.png)
+
+In each of the figures there are no autocorrelations outside of the 95% limits.  Each of the three data sets indicate white noise.  The greater the length of the time series, the narrower the range expected for white noise.  The autocorrelation plots for smaller numbers of random numbers have a wider range of values away from zero that delineate the range for white noise.
+
+b) Why are the critical values at different distances from the mean of zero? Why are the autocorrelations different in each figure when they each refer to white noise?
+
+The critical values are at different distance from the mean of zero because white noise is expected to lie within $\pm2/\sqrt{T}$.  T is the number of random numbers, which is 36, 360 and 1,000.  The range expected for 36 random is $\pm$ 0.33.  The range expected for 360 is $\pm$ 0.11.  The range expected for 360 is $\pm$ 0.063. 
+
+8.2) A classic example of a non-stationary series is the daily closing IBM stock price series (data set ibmclose). Use R to plot the daily closing prices for IBM stock and the ACF and PACF. Explain how each plot shows that the series is non-stationary and should be differenced.
+```{r ibm_stock, echo=TRUE}
+autoplot(ibmclose)  +  ggtitle("Daily Closing Price For IBM Stock")
+```
+
+
+The plot of daily closing price for IBM shows that the series is non-stationary because there are different levels present in the data.  The data moves from being around 450 dollars to around 550 dollars to around 375 dollars.
+
+```{r ibm_stock_acf, echo=TRUE}
+ggAcf(ibmclose)  +  ggtitle("Correlogram of Daily Closing Price For IBM Stock")
+```
+
+
+The ACF for daily price of IBM stock shows a positive value for r1 and a slow decrease.  This indicates a trend because observations that consecutive are close in size.  Because there is a trend, we know the data is non-stationary.
+
+```{r ibm_stock_pacf, echo=TRUE}
+#ggPacf(ibmclose)  +  ggtitle("PACF of Daily Closing Price For IBM Stock")
+pacf(ibmclose, main="Partial Autocorrelation of Daily Closing Price For IBM Stock")
+```
+
+The partial autocorrelation function of daily closing price for IBM shows a large initial spike.  This indicates that the data is not stationary.  
+Because the data is not stationary, it should be differenced to make it stationary.
+
+8-3) For the following series, find an appropriate Box-Cox transformation and order of differencing in order to obtain stationary data.
+
+## US Net Electricity Generation - data set: usnetelec
+```{r usnetelec, echo=TRUE}
+autoplot(usnetelec) + ylab("Annual US Electricity Generation (billion kWh)") +  ggtitle("Annual US Net Electricity Generation")
+lambda_usnetelec <- BoxCox.lambda(usnetelec)
+autoplot(BoxCox(usnetelec,lambda_usnetelec)) +  ggtitle("Box Cox Transformation of Annual US Net Electricity Generation")
+lambda_usnetelec
+BoxCox(usnetelec,lambda_usnetelec) %>% ur.kpss() %>% summary()
+ndiffs(BoxCox(usnetelec,lambda_usnetelec))
+ggAcf(BoxCox(usnetelec,lambda_usnetelec))  +  ggtitle("Correlogram of Box Cox Transformation of US Net Electricity Generation")
+```
+
+Annual US net electricity generation shows an upward trend.  Lambda for the Box Cox model is equal to 0.52.  This leads me to believe that applying a square root would be an appropriate transformation.  I performed a unit root test to determine if differencing is required.  The test statistic is bigger than the 1% critical value so differencing is required. The ACF plot displays a downward trend, indicating that the data is not stationary.  I used the ndiffs function and found the appropriate number of differencing to be 2.
+
+```{r diff_usnetelec, echo=TRUE}
+ggAcf(diff(BoxCox(usnetelec,lambda_usnetelec)))
+autoplot(diff(BoxCox(usnetelec,lambda_usnetelec)))
+diff(BoxCox(usnetelec,lambda_usnetelec)) %>% ur.kpss() %>% summary()
+```
+
+Even though the ndiffs test suggested differencing twice, when I differenced once, I was left with white noise.  All of the autocorrelations are within the 95% limits.  The test statistic is lower than the 1 percent critical value.  The differencing of the Box Cox transformation makes the data stationary.
+
+##Quarterly US GDP - Dataset: usgdp
+```{r usgdp, echo=TRUE}
+autoplot(usgdp) + ylab("Quarterly US GDP") +  ggtitle("US GDP")
+lambda_usgdp <- BoxCox.lambda(usgdp)
+autoplot(BoxCox(usnetelec,lambda_usgdp)) +  ggtitle("Box Cox Transformation of US GDP")
+lambda_usgdp
+BoxCox(usgdp,lambda_usgdp) %>% ur.kpss() %>% summary()
+ndiffs(BoxCox(usgdp,lambda_usgdp))
+ggAcf(BoxCox(usgdp,lambda_usgdp))  +  ggtitle("Correlogram of Box Cox Transformation of US GDP")
+```
+
+Quarterly US GDP shows an upward trend.  Lambda for the Box Cox model is equal to 0.37.  I performed a unit root test to determine if differencing is required.  The test statistic is bigger than the 1% critical value so differencing is required. The ACF plot displays a downward trend, indicating that the data is not stationary.  All values in the ACF plot are beyond the limits that would indicate white noise.  I used the ndiffs function and found the appropriate number of differencing to be 1.
+
+```{r diff_usgdp, echo=TRUE}
+ggAcf(diff(BoxCox(usgdp,lambda_usgdp)))
+autoplot((diff(BoxCox(usgdp,lambda_usgdp))))
+diff(BoxCox(usgdp,lambda_usgdp)) %>% ur.kpss() %>% summary()
+```
+
+Most of the autocorrelations are within the 95% limits.  The test statistic is lower than the 1 percent critical value.  The differenced Box Cox transformation is stationary.
+
+##Monthly Copper Prices - Dataset: mcopper
+```{r mcopper, echo=TRUE}
+autoplot(mcopper) + ylab("Monthly Copper Prices") +  ggtitle("Copper Prices")
+lambda_mcopper <- BoxCox.lambda(mcopper)
+autoplot(BoxCox(mcopper,lambda_mcopper)) +  ggtitle("Box Cox Transformation of Copper Prices")
+lambda_mcopper
+BoxCox(mcopper,lambda_mcopper) %>% ur.kpss() %>% summary()
+ndiffs(BoxCox(mcopper,lambda_mcopper))
+ggAcf(BoxCox(mcopper,lambda_mcopper))  +  ggtitle("Correlogram of Box Cox Transformation of Copper Prices")
+```
+
+Quarterly US GDP shows an upward trend and a spike around 2007.  Lambda for the Box Cox model is equal to 0.19.  I performed a unit root test to determine if differencing is required.  The test statistic is bigger than the 1% critical value so differencing is required. The ACF plot displays a downward trend, indicating that the data is not stationary.  All values in the ACF plot are beyond the limits that would indicate white noise.  I used the ndiffs function and found the appropriate number of differencing to be 1.
+
+```{r diff_mcopper, echo=TRUE}
+ggAcf(diff(BoxCox(mcopper,lambda_mcopper)))
+autoplot((diff(BoxCox(mcopper,lambda_mcopper))))
+diff(BoxCox(mcopper,lambda_mcopper)) %>% ur.kpss() %>% summary()
+```
+
+Most of the autocorrelations are within the 95% limits.  However there is a large spike at the beginning.  The test statistic is lower than the 1 percent critical value.  The differenced Box Cox transformation is stationary.
+
+##Montly US Domestic Enplanements - Dataset: enplanements
+```{r enplanements, echo=TRUE}
+autoplot(enplanements) + ylab("Monthly US Domestic Enplanements") +  ggtitle("US Domestic Enplanements")
+lambda_enplanements <- BoxCox.lambda(enplanements)
+autoplot(BoxCox(enplanements,lambda_enplanements)) +  ggtitle("Box Cox Transformation of US Domestic Enplanements")
+lambda_enplanements
+BoxCox(enplanements,lambda_enplanements) %>% ur.kpss() %>% summary()
+ndiffs(BoxCox(enplanements,lambda_enplanements))
+ggAcf(BoxCox(enplanements,lambda_enplanements))  +  ggtitle("Correlogram of Box Cox Transformation of US Domestic Enplanements")
+```
+
+Monthly US domestic enplanements shows an upward trend and seasonality  Lambda for the Box Cox model is equal to -0.23.  I performed a unit root test to determine if differencing is required.  The test statistic is bigger than the 1% critical value so differencing is required. The ACF plot displays a downward trend, indicating that the data is not stationary.  All values in the ACF plot are beyond the limits that would indicate white noise.  I used the ndiffs function and found the appropriate number of differencing to be 1.
+
+```{r diff_enplanements, echo=TRUE}
+ggAcf(diff(BoxCox(enplanements,lambda_enplanements)))
+autoplot((diff(BoxCox(enplanements,lambda_enplanements))))
+diff(BoxCox(enplanements,lambda_enplanements)) %>% ur.kpss() %>% summary()
+
+ggAcf(diff(diff(BoxCox(enplanements,lambda_enplanements)),12))
+autoplot(diff(diff(BoxCox(enplanements,lambda_enplanements)),12))
+diff(diff(BoxCox(enplanements,lambda_enplanements),12)) %>% ur.kpss() %>% summary()
+```
+
+About half of the autocorrelations are outside of the 95% limits.   The test statistic is lower than the 1 percent critical value.  I then took the difference of a seasonal difference.  This has the result of most of the autocorrelations being inside the 95% limit.  When differencing a second time, it does approach white noise.
+
+##Monthly Australian Overseas Visitors - Dataset: visitors
+```{r visitors, echo=TRUE}
+autoplot(visitors) + ylab("Monthly Australian Overseas Visitors") +  ggtitle("Australian Overseas Visitors")
+lambda_visitors <- BoxCox.lambda(visitors)
+autoplot(BoxCox(visitors,lambda_visitors)) +  ggtitle("Box Cox Transformation of Australian Overseas Visitors")
+lambda_visitors
+BoxCox(visitors,lambda_visitors) %>% ur.kpss() %>% summary()
+ndiffs(BoxCox(visitors,lambda_visitors))
+ggAcf(BoxCox(visitors,lambda_visitors))  +  ggtitle("Correlogram of Box Cox Transformation of Australian Overseas Visitors")
+```
+
+Monthly Australian Overseas Visitors shows an upward trend with a cycle.  Lambda for the Box Cox model is equal to 0.28.  I performed a unit root test to determine if differencing is required.  The test statistic is bigger than the 1% critical value so differencing is required. The ACF plot displays a downward trend and a seasonality, indicating that the data is not stationary.  All values in the ACF plot are beyond the limits that would indicate white noise.  I used the ndiffs function and found the appropriate number of differencing to be 1.
+
+```{r diff_visitors, echo=TRUE}
+ggAcf(diff(BoxCox(visitors,lambda_visitors)))
+autoplot((diff(BoxCox(visitors,lambda_visitors))))
+diff(BoxCox(visitors,lambda_visitors)) %>% ur.kpss() %>% summary()
+
+ggAcf(diff(diff(BoxCox(visitors,lambda_visitors)),12))
+autoplot(diff(diff(BoxCox(visitors,lambda_visitors)),12))
+diff(diff(BoxCox(visitors,lambda_visitors),12)) %>% ur.kpss() %>% summary()
+
+ggAcf(diff((diff(diff(BoxCox(visitors,lambda_visitors)),12))))
+autoplot(diff(diff(diff(BoxCox(visitors,lambda_visitors)),12)))
+diff(diff(diff(BoxCox(visitors,lambda_visitors),12))) %>% ur.kpss() %>% summary()
+```
+
+About half of the autocorrelations are outside of the 95% limits.   The test statistic is lower than the 1 percent critical value.  I then took the difference of a seasonal difference and took the difference of that.  None of those created a stationary data set.
+
+8-5)For your retail data (from Exercise 3 in Section 2.10), find the appropriate order of differencing (after transformation if necessary) to obtain stationary data.
+```{r load-data-retail, echo=TRUE}
+retaildata <- readxl::read_excel("retail.xlsx", skip=1)
+myts <- ts(retaildata[,"A3349399C"],frequency=12, start=c(1982,4))
+autoplot(myts) + ylab("Retail Clothing Sales") + ggtitle("New South Wales - Clothing Sales")
+lambda_retail <- BoxCox.lambda(myts)
+lambda_retail
+autoplot(BoxCox(myts,lambda_retail)) +  ggtitle("Box Cox Transformation of Retail Clothing Sales in New South Wales")
+BoxCox(myts,lambda_retail) %>% ur.kpss() %>% summary()
+ndiffs(BoxCox(myts,lambda_retail))
+ggAcf(BoxCox(myts,lambda_retail))  +  ggtitle("Correlogram of Box Cox Transformation of Retail Clothing Sales in New South Wales")
+```
+
+
+Clothing Sales shows an upward trend with a seasonality of 1 year.  Lambda for the Box Cox model is equal to 0.02.  I performed a unit root test to determine if differencing is required.  The test statistic is bigger than the 1% critical value so differencing is required. The ACF plot displays a downward trend and a seasonality, indicating that the data is not stationary.  All values in the ACF plot are beyond the limits that would indicate white noise.  I used the ndiffs function and found the appropriate number of differencing to be 1.
+
+```{r diff_retail, echo=TRUE}
+ggAcf(diff(BoxCox(myts,lambda_retail)))
+autoplot((diff(BoxCox(myts,lambda_retail))))
+diff(BoxCox(myts,lambda_retail)) %>% ur.kpss() %>% summary()
+
+ggAcf(diff(diff(BoxCox(myts,lambda_retail)),12))
+autoplot(diff(diff(BoxCox(myts,lambda_retail)),12))
+diff(diff(BoxCox(myts,lambda_retail),12)) %>% ur.kpss() %>% summary()
+
+ggAcf(diff((diff(diff(BoxCox(myts,lambda_retail)),12))))
+autoplot(diff(diff(diff(BoxCox(myts,lambda_retail)),12)))
+diff(diff(diff(BoxCox(myts,lambda_retail),12))) %>% ur.kpss() %>% summary()
+```
+
+About half of the autocorrelations are outside of the 95% limits.   The test statistic is lower than the 1 percent critical value.  Because the ACF shows that the data is correlated, I then took the difference of a seasonal difference and took the difference of that.  None of those created a stationary data set.
+
+8-6) Use R to simulate and plot some data from simple ARIMA models. 
+a) Use the following R code to generate data from an AR(1) model with $\phi$=0.6 and $\sigma^2$=1/  The process starts with y1=0.
+```{r ar0.6, echo=TRUE}
+y <- ts(numeric(100))
+e <- rnorm(100)
+for(i in 2:100)
+  y[i] <- 0.6*y[i-1] + e[i]
+```
+
+b) Produce a time plot for the series. How does the plot change as you change $\phi_1$?
+```{r timeplot_ar, echo=TRUE}
+autoplot(y) + ggtitle("phi=0.6")
+ggAcf(y) + ggtitle("phi=0.6")
+```
+
+When $\phi$=0.0 and c=0, the ACF plot shows that values are correlated with each other.
+
+```{r ar0.9, echo=TRUE}
+y <- ts(numeric(100))
+e <- rnorm(100)
+for(i in 2:100)
+  y[i] <- 0.9*y[i-1] + e[i]
+autoplot(y) + ggtitle("phi=0.9")
+ggAcf(y) + ggtitle("phi=0.9")
+```
+
+When $\phi$ is increased to 0.9, the values are still correlated, but the larger lags do not show a correlation.
+
+```{r ar0, echo=TRUE}
+y <- ts(numeric(100))
+e <- rnorm(100)
+for(i in 2:100)
+  y[i] <- 0*y[i-1] + e[i]
+autoplot(y) + ggtitle("phi=0")
+ggAcf(y) + ggtitle("phi=0")
+```
+
+When $\phi$=0 and c=0, the AR(1) model results in white noise because the only term is the error term.
+
+```{r ar-0.6, echo=TRUE}
+y <- ts(numeric(100))
+e <- rnorm(100)
+for(i in 2:100)
+  y[i] <- -0.6*y[i-1] + e[i]
+autoplot(y) + ggtitle("phi=-0.6")
+ggAcf(y) + ggtitle("phi=-0.6")
+```
+
+When $\phi$ is negative and c is zero, the values alternate between positive and negative values because the previous value is multiplied by a negative number and then added to an error term.
+
+c)Write your own code to generate data from an MA(1) model with $\theta_1$=0.6 and $\sigma^2$=1.
+```{r ma0.6, echo=TRUE}
+y <- ts(numeric(100))
+e <- rnorm(10000)
+for(i in 2:100)
+  y[i] <- 0.6*e[i-1] + e[i]
+```
+
+d) Produce a time plot for the series. How does the plot change as you change $\theta_1$.
+
+```{r MA1plot, echo=TRUE}
+autoplot(y) + ggtitle("MA(1) theta=0.6")
+ggAcf(y) + ggtitle("MA(1) theta=0.6")
+```
+
+Since values are based on a multiple of the previous error value, the values are not correlated.
+
+```{r ma0.9, echo=TRUE}
+y <- ts(numeric(100))
+e <- rnorm(10000)
+for(i in 2:100)
+  y[i] <- 0.9*e[i-1] + e[i]
+autoplot(y) + ggtitle("MA(1) theta=0.9")
+ggAcf(y) + ggtitle("MA(1) theta=0.9")
+```
+
+When theta is higher, the most recent error has a greater influence on y.
+
+```{r ma0, echo=TRUE}
+y <- ts(numeric(100))
+e <- rnorm(10000)
+for(i in 2:100)
+  y[i] <- 0*e[i-1] + e[i]
+autoplot(y) + ggtitle("MA(1) theta=0")
+ggAcf(y) + ggtitle("MA(1) theta=0")
+```
+
+An MA(1) model with theta equals zero produces white noise because the only term is the error term.  
+
+e) Generate data from an ARMA(1,1) model with $\phi_1$=0.6, $\theta_1$=0.6 and $\sigma^2$=1
+```{r arma0.6, echo=TRUE}
+y <- ts(numeric(100))
+e <- rnorm(10000)
+for(i in 2:100)
+  y[i] <- 0.6*e[i-1] +0.6*y[i-1] +e[i]
+autoplot(y) + ggtitle("ARMA(1) phi=0.6 theta=0.6")
+ggAcf(y) + ggtitle("ARMA(1) phi=0.6 theta=0.6")
+```
+The ARMA model is influence by the last value and the previous error value.
+
+f) Generate data from an AR(2) model with $\phi_1$=-0.8, $\phi_2$=0.3, and $\sigma^2$=1. (Note that these parameters will give a non-stationary series.)
+```{r ar2, echo=TRUE}
+y <- ts(numeric(100))
+e <- rnorm(10000)
+for(i in 3:100)
+  y[i] <- -0.8*y[i-1] + 0.3*y[i-2] + e[i]
+autoplot(y) + ggtitle("AR(2) phi1=-0.8, phi2=0.3")
+ggAcf(y) + ggtitle("AR(2) phi1=-0.8, phi2=0.3")
+```
+
+g) Graph the latter two series and compare them.
+(Graphs are shown above.)
+The AR(2) model alternates between positive and negative values because phi 1 is negative.  The AR(2) model shows larger values as time progresses due to the phi 2 term.  The ARMA(1) model is not correlated because of the dependence on the previous value's error.
+
+
+8-7) Consider wmurders, the number of women murdered each year (per 100,000 standard population) in the United States. a) By studying appropriate graphs of the series in R, find an appropriate ARIMA(p,d,q) model for these data.
+```{r women-murders, echo=TRUE}
+autoplot(wmurders) +ggtitle("Number of Women Murdered each Year in the US Per 100,000 in the Population")
+```
+
+
+
+```{r acf_wmurders, echo=TRUE}
+ggAcf(wmurders) + ggtitle("ACF of wmurders")
+ggPacf(wmurders) + ggtitle("PACF of wmurders")
+```
+
+The ACF of the transformed data of women murders shows a slow decrease.  This indicates a trend because observations that consecutive are close in size.  Because there is a trend, we know the data is non-stationary.  Therefore the data should be differenced.
+
+```{r differencing-wmurders, echo=TRUE}
+ndiffs(wmurders)
+diff_murders <- diff(diff(wmurders))
+diff_murders %>% ur.kpss() %>% summary()
+ggAcf(diff_murders)
+ggPacf(diff_murders)
+```
+
+The ndiffs function suggested differencing twice.  The PACF shows a spike at 1, suggesting that p=1.  The ACF shows a significant spike at 2, suggesting q=2. 
+
+I will choose an ARIMA(1,2,2) model.
+
+b) Should you include a constant in the model? Explain.
+Since d=2, a constant does not need to be included in the model.  The mean is zero so therefore c=0.
+
+c) Write this model in terms of the backshift operator.
+(1-$\phi_1$B)$(1-B)^2y_t$ = (1+$\theta_1B + \theta_2B^2\epsilon_t$)
+
+d) Fit the model using R and examine the residuals. Is the model satisfactory?
+
+```{r arima1_2_2, echo=TRUE}
+#use parenthesis around statement to get coefficients for model
+(fit <- Arima(wmurders, order=c(1,2,2)))
+checkresiduals(fit)
+```
+
+(1+0.7677B)$(1-B)^2y_t$ = (1-.2812B - .4977B^2\epsilon_t$)
+
+The residuals that I chose are nearly normal.  The ACF plot shows white noise for residuals.  
+
+e) Forecast three times ahead. Check your forecasts by hand to make sure that you know how they have been calculated.
+```{r forecast3, echo=TRUE}
+fit %>% forecast(h=3)
+
+
+-.7677*wmurders[55] -.2812*residuals(fit)[55] - .4977*residuals(fit)[54]
+```
+
+This does not give the value calculated as the point estimate.  I don't know why my calculation did not work.
+
+f)
+```{r forecast, echo=TRUE}
+fit %>% forecast(h=3) %>% autoplot(include=80) + xlab("Year") +ylab ("women murdered per 100,000 people in the US")
+```
+
+g) Does auto.arima() give the same model you have chosen? If not, which model do you think is better?
+```{r autoarima ,echo=TRUE}
+auto.arima(wmurders)
+```
+
+The auto.arima function gave an ARIMA (1,2,1) model, which as a lower AIC, AICc and BIC value than the ARIMA(1,2,2) model I predicted.  Therefore the auto.arima model's prediction is better.

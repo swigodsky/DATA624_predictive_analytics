@@ -1,0 +1,106 @@
+---
+title: "DATA 624 HW3"
+author: "Sarah Wigodsky"
+date: "February 19, 2019"
+output: html_document
+---
+
+2.  The plastics data set consists of the monthly sales (in thousands) of product A for a plastics manufacturer for five years. 
+a.  Plot the time series of sales of product A. Can you identify seasonal fluctuations and/or a trend-cycle?
+```{r plastics, echo=TRUE, warning=FALSE, message=FALSE}
+library(fpp2)
+autoplot(plastics) + ggtitle("Sales of Product A for a Plastics Manufacturer") + ylab("Monthly Sales of Product A")
+```
+
+
+There is a seasonality with a frequency of 1 year and a trend-cycle that shows an increasing trend.
+
+
+b.  Use a classical multiplicative decomposition to calculate the trend-cycle and seasonal indices.
+
+```{r mult_decomp, echo=TRUE}
+plastics %>%
+decompose(type="multiplicative") %>% 
+autoplot() + 
+ggtitle("Sales of Product A for a Plastics Manufacturer")
+```
+
+The results of the multiplicative decomposition show a yearly seasonal component with a frequency of 1 year.  There is an increasing trend from year 1.5 through 5 years.  After 5.2 years, there is a decrease in the trend.
+
+
+c.  Do the results support the graphical interpretation from part a?
+
+The results support the graphical interpretation from part a, which was a seasonality of frequency 1 year and an increasing trend.  I did not notice that the trend starts to decrease after the fifth year.  However because classical multiplicative decomposition relies on moving averages, there is no data at the beginning and end of the trend-cycle.  Because of that it is hard to put too much stock in the decreasing trend shown after 5.2 years as we can not determine if that is sustained.
+
+d.  Compute and plot the seasonally adjusted data.
+
+```{r seasonally_adjusted, echo=TRUE}
+mult_decomp <- plastics %>%
+  decompose(type="multiplicative")
+
+autoplot(plastics, series="Data") +
+  autolayer(seasadj(mult_decomp), series="Seasonally Adjusted") +
+  ggtitle("Sales of Product A for a Plastics Manufacturer") + 
+  ylab("Monthly Sales of Product A")
+``` 
+
+The seasonally adjusted plot shows the monthly sales of product A with the seasonal data removed.  The upward trend and remainder make up the seasonally adjusted plot.
+
+e.  Change one observation to be an outlier (e.g., add 500 to one observation), and recompute the seasonally adjusted data. What is the effect of the outlier?
+
+```{r add500, echo=TRUE}
+plst <- plastics
+plst[50] <- plst[50]+500
+
+mult_decomp2 <- plst %>%
+  decompose(type="multiplicative") 
+
+plst %>%
+decompose(type="multiplicative") %>% 
+autoplot() + 
+ggtitle("Sales of Product A for a Plastics Manufacturer")
+
+
+autoplot(plst, series="Data") +
+  autolayer(seasadj(mult_decomp2), series="Seasonally Adjusted") +
+  ggtitle("Sales of Product A for a Plastics Manufacturer with 500 added to the 50th data point") + 
+  ylab("Monthly Sales of Product A")
+```
+
+When 500 was added to the 50th data point, it caused a large spike in the seasonally adjusted data.  The monthly sales of product A was taken from a seasonal low point to a relative high point.  The addition of 500 to the 50th data point has a relatively small affect on the seasonal component.  This is because the seasonal component is uniform for each year and only one data point has changed.  However dividing the data by the seasonal component to create the seasonally adjusted data creates a large spike because the remainder at that point is very large.
+
+f.  Does it make any difference if the outlier is near the end rather than in the middle of the time series?
+
+```{r seasonally_adjusted2, echo=TRUE}
+plst2 <- plastics
+plst2[60] <- plst[60]+500
+
+mult_decomp3 <- plst2 %>%
+  decompose(type="multiplicative") 
+
+plst2 %>%
+decompose(type="multiplicative") %>% 
+autoplot() + 
+ggtitle("Sales of Product A for a Plastics Manufacturer")
+
+
+autoplot(plst2, series="Data") +
+  autolayer(seasadj(mult_decomp3), series="Seasonally Adjusted") +
+  ggtitle("Sales of Product A for a Plastics Manufacturer with 500 added to the 1st data point") + 
+  ylab("Monthly Sales of Product A")
+```
+
+Adding 500 to the last entry causes a spike at the end of the seasonally adjusted data.  The seasonal data is less affected by the change - its pattern more closely matches that of the original data.  The trend and remainder have no data at the end of the time series due the trend's reliance on moving averages.  The trend relies on averages so it is brought up slightly by the addition, but it is fairly minimal.
+
+6-3) Recall your retail time series data (from Exercise 3 in Section 2.10). Decompose the series using X11. Does it reveal any outliers, or unusual features that you had not noticed previously?
+
+```{r retail-x11, echo=TRUE, message=FALSE, warning=FALSE}
+library(seasonal)
+retaildata <- readxl::read_excel("retail.xlsx", skip=1)
+myts <- ts(retaildata[,"A3349399C"],frequency=12, start=c(1982,4))
+myts %>% seas(x11="") -> myts_x11
+autoplot(myts_x11) +
+  ggtitle("X11 decomposition of Clothing Sales in New South Wales")
+```
+
+The X-11 decomposition shows a seasonal component with a frequency of 1 year.  There is an upward trend.  What is surprising is that there are 2 spikes in the remainder between the years 2000 and 2001.  This is surprising because the original data does not look out of the ordinary at those times; the trend and seasonality appear consistent throughout based on looking at the data.  However the actual data deviates significantly from being composed of the trend and seasonal components in 2 locations. 

@@ -1,0 +1,331 @@
+---
+title: "DATA 624 HW 4"
+author: "Sarah Wigodsky"
+date: "February 28, 2019"
+output: html_document
+---
+
+Kuhn and Johnson
+3.1) 
+```{r glass_data, echo=TRUE, warning=FALSE, message=FALSE}
+library(mlbench)
+library(e1071)
+library(caret)
+library(fpp2)
+library(tidyr)
+library(dplyr)
+data(Glass)
+str(Glass)
+head(Glass)
+```
+
+The Glass data set consists of 214 observations of 7 different types of glass. The data gives the refractive index of the glass sample and the percentage of sodium, magnesium, aluminum, silicon, potassium, calcium, barium and iron in the sample.
+
+a and b)Using visualizations, explore the predictor variables to understand their distributions, as well as the relationships between predictors.  Do there appear to be any outliers in the data?  Are any predictors skewed?  (I answered questions a and b together below.)
+
+
+##Refractive Index
+```{r refractive_index, echo=TRUE}
+summary(Glass$RI)
+plot(Glass$RI, ylab="Refractive Index")
+hist(Glass$RI, xlab="Refractive Index",main="Histogram of Refractive Index")
+boxplot(Glass$RI, main="Refractive Index")
+skewness(Glass$RI)
+```
+The refractive index of the sample ranges between 1.511 and 1.534. The mean and median refractive index are equal at 1.518. The distribution of the refractive index is skewed to the right.  There are a number of outliers, with many more outliers above 1.523 than outliers at the low end.  There are no missing values. 
+
+##Percentage of Sodium in the Sample
+```{r Na, echo=TRUE}
+summary(Glass$Na)
+plot(Glass$Na, ylab="Percentage of Sodium in the Sample")
+hist(Glass$Na, xlab="Percentage of Sodium in the Sample",main="Histogram of the Percentage of Sodium in the Sample")
+boxplot(Glass$Na, main="Percentage of Sodium in the Sample")
+skewness(Glass$Na)
+```
+
+The percentage of sodium in the sample ranges from 10.73% to 17.38%.  There are no missing values. The mean and median are very close to each other; the values are 13.41 and 13.30, respectively.  The distribution of the percentage of sodium in glass samples is nearly normal.  There are some outliers, both at the high end and the low end.
+
+Percentage of Magnesium in the Sample
+```{r Mg, echo=TRUE}
+summary(Glass$Mg)
+plot(Glass$Mg, ylab="Percentage of Magnesium in the Sample")
+hist(Glass$Mg, xlab="Percentage of Magnesium in the Sample",main="Histogram of the Percentage of Magnesium in the Sample")
+boxplot(Glass$Mg, main="Percentage of Magnesium in the Sample")
+skewness(Glass$Mg)
+```
+
+The percentage of magnesium in the glass sample ranges from 0 to 4.490%.  There are many samples without any magnesium.  The distribution shows a large number of samples without magnesium and a large number of samples near the maximum percentage and few samples in between.
+
+
+Percentage of Aluminum in the Sample
+```{r Al, echo=TRUE}
+summary(Glass$Al)
+plot(Glass$Al, ylab="Percentage of Aluminum in the Sample")
+hist(Glass$Al, xlab="Percentage of Aluminum in the Sample",main="Histogram of the Percentage of Aluminum in the Sample")
+boxplot(Glass$Al, main="Percentage of Aluminum in the Sample")
+skewness(Glass$Al)
+```
+
+The percentage of aluminum in the glass sample ranges from 0.290% to 3.500%. The median and mean are similar.  The distribution of the percentage of aluminum in the glass samples is skewed to the right.  There are outliers above 2.4 and below 0.5.  There are no missing values.
+
+Percentage of Silicon in the Sample
+```{r Si, echo=TRUE}
+summary(Glass$Si)
+plot(Glass$Si, ylab="Percentage of Silicon in the Sample")
+hist(Glass$Si, xlab="Percentage of Silicon in the Sample",main="Histogram of the Percentage of Silicon in the Sample")
+boxplot(Glass$Si, main="Percentage of Silicon in the Sample")
+skewness(Glass$Si)
+```
+
+The percentage of silicon in the glass samples ranges from 69.81% to 75.41%.  The mean and median value of silicon in samples is very similar.  The distribution is skewed left and there are more outliers below 71 than above 74.  There are no missing values.
+
+Percentage of Potassium in the Sample
+```{r K, echo=TRUE}
+summary(Glass$K)
+plot(Glass$K, ylab="Percentage of Potasium in the Sample")
+hist(Glass$K, xlab="Percentage of Potasium in the Sample",main="Histogram of the Percentage of Potasium in the Sample")
+boxplot(Glass$K, main="Percentage of Potasium in the Sample")
+skewness(Glass$K)
+```
+
+The percentage of potassium in the glass samples ranges from 0 to 6.21%  The mean is slightly lower than the median.  Nearly all of the samples are between 0-1% potassium.  The distribution is skewed to the right.  There are a few outliers between 1.2% and 3% and 2 samples who are outliers and are over 6% potassium.  The newness is very large, with a value of 6.46.
+
+Percentage of Calcium in the Sample
+```{r Ca, echo=TRUE}
+summary(Glass$Ca)
+plot(Glass$Ca, ylab="Percentage of Calcium in the Sample")
+hist(Glass$Ca, xlab="Percentage of Calcium in the Sample",main="Histogram of the Percentage of Calcium in the Sample")
+boxplot(Glass$Ca, main="Percentage of Calcium in the Sample")
+skewness(Glass$Ca)
+```
+
+The percentage of calcium in the glass samples ranges from 5.430% to 16.190%.  The median is slightly lower than the mean.  The distribution is skewed to the right and there are more outliers above 11 than below 7.  There are no missing values.
+
+Percentage of Barium in the Sample
+```{r Ba, echo=TRUE}
+summary(Glass$Ba)
+plot(Glass$Ba, ylab="Percentage of Barium in the Sample")
+hist(Glass$Ba, xlab="Percentage of Barium in the Sample",main="Histogram of the Percentage of Barium in the Sample")
+boxplot(Glass$Ba, main="Percentage of Barium in the Sample")
+skewness(Glass$Ba)
+```
+
+The percentage of barium in the sample ranges from 0 to 3.150%.  The median value is 0, as most of the samples contain no barium.  The data is skewed to the right. All of the samples that have barium in them are outliers.  There are no missing values.  The skewness is large, with a value of 3.37.
+
+Percentage of Iron in the Sample
+```{r Fe, echo=TRUE}
+summary(Glass$Fe)
+plot(Glass$Fe, ylab="Percentage of Iron in the Sample")
+hist(Glass$Fe, xlab="Percentage of Iron in the Sample",main="Histogram of the Percentage of Iron in the Sample")
+boxplot(Glass$Fe, main="Percentage of Iron in the Sample")
+skewness(Glass$Fe)
+```
+The percentage of iron in the sample ranges from 0 to 0.510%.  The median value is 0, as most of the samples contain no iron  The data is skewed to the right. Samples with a percentage of iron that is greater than 0.28% are outliers.  There are no missing values.
+
+####Correlation of Variables
+The following are the correlation values between each of the variables. The closer the correlation is to 1 or -1, the more highly correlated the variables.
+```{r correlation, echo=TRUE, fig.width=12}
+
+library(corrplot)
+glass_pred <- subset(Glass, select=-c(Type))
+correlation <- cor(glass_pred, method = "pearson")
+corrplot(correlation, type="upper", method="color")
+```
+
+The refractive index is positively correlated to the percentage of calcium in the sample and negatively correlated to the percentage of silicon in the sample.  The percentage of magnesium is negatively correlated with the percentage of aluminum in the sample and the percentage of barium in the sample.  The percentage of aluminum is positively correlated with the percentage of barium in the sample. 
+
+```{r plot-pred-variables, echo=TRUE}
+plot(glass_pred)
+```
+
+The plot above displays the relationship between each of the variables.  The most significant relationships were highlighted by the correlation plot.  There is a positive correlation between the refractive index and the percentage of calcium in the sample and a negative correlation between the refractive index and the percentage of aluminum in the sample.
+
+c)  Are there any relevant transformations of one of more predictors that might improve the classification model?
+
+The percentage of magnesium is not a normal distribution.  I will apply a Box-Cox transformation.
+```{r Box-cox-Mg, echo=TRUE}
+lambda_mg <- BoxCox.lambda(Glass$Mg)
+hist(BoxCox(Glass$Mg,lambda_mg), main="Histogram of the Box Cox Transformation of the Percentage of Magnesium in the Sample")
+```
+
+Because the data is bimodal, the Box Cox transformation did not create a more normal distribution.
+
+The percentage of barium in the sample is not a normal distribution.  I will apply a Box-Cox transformation.
+```{r ba-box-cox, echo=TRUE}
+#ba_trans <- BoxCoxTrans(Glass$Ba)
+#ba_trans
+#plot(ba_trans)
+
+lambda_ba <- BoxCox.lambda(Glass$Ba)
+hist(BoxCox(Glass$Ba,lambda_ba), main="Histogram of the Box Cox Transformation of the Percentage of Barium in the Sample")
+```
+
+Because nearly all of the samples have no barium, performing a Box Cox transformation is not effective.
+
+The percentage of iron in the sample is not normally distributed.  I will apply a Box-Cox transformation.
+
+```{r fe-box-cox, echo=TRUE}
+#fe_trans <- BoxCoxTrans(Glass$Fe)
+#fe_trans
+#plot(fe_trans)
+
+lambda_fe <- BoxCox.lambda(Glass$Fe)
+hist(BoxCox(Glass$Fe,lambda_fe), main="Histogram of the Box Cox Transformation of the Percentage of Iron in the Sample")
+```
+
+Because of the large number of samples that have no iron, performing a Box Cox transformation is not effective.
+
+The percentage of calcium in the sample is not a normal distribution.  I will apply a Box-Cox transformation.
+```{r ca-box-cox, echo=TRUE}
+lambda_ca <- BoxCox.lambda(Glass$Ca)
+hist(BoxCox(Glass$Ca,lambda_ca), main="Histogram of the Box Cox Transformation of the Percentage of Calcium in the Sample")
+skewness(BoxCox(Glass$Ca,lambda_ca))
+```
+
+The Box Cox transformation lowered the skewness of the calcium variable.  The skewness decreased from 2 to 0.6.  The histogram shows a nearly normal distribution.
+
+```{r al-box-cox, echo=TRUE}
+lambda_al <- BoxCox.lambda(Glass$Al)
+hist(BoxCox(Glass$Al,lambda_al), main="Histogram of the Box Cox Transformation of the Percentage of Aluminum in the Sample")
+skewness(BoxCox(Glass$Al,lambda_al))
+```
+
+The Box Cox transformation lowered the skewness of the calcium variable.  The skewness decreased from 0.89 to -.15.  The histogram shows a nearly normal distribution.
+
+
+I would consider combining the variables that are correlated.  I will combine the refractive index with the percentage of calcium by adding them together.
+
+```{r combining-variables, echo=TRUE}
+Glass <- Glass %>%
+  mutate(RICa=RI+Ca)
+head(Glass)
+```
+
+3.2) The Soybean data set consists of 683 observations of 36 variables that can be used to predict disease in soybeans.
+```{r soybean, echo=TRUE}
+data("Soybean")
+head(Soybean)
+```
+
+a) Investigate the frequency distributions for the categorical predictors.  Are any of the distributions degenerate in the ways discussed earlier in the chapter?
+
+```{r hist, echo=TRUE}
+for (x in 1:length(Soybean)){
+  hist(as.numeric(Soybean[,x]), main=colnames(Soybean[x]))
+}
+```
+
+Variables that have a degenerate distribution have a very high frequency in 1 value.  The following variables have a degenerate distribution: leaves, leaf.shread, leaf.malf, leaf.mild, lodging, mycelium, int.discolor, sclerotia, mold.growth, seed.discolor, seed.size, shriveling and roots.
+
+
+b) Roughly 18% of the data are missing.  Are there particular predictors that are more likely to be missing?  Is the pattern of missing data related to the classes?
+
+```{r summary, echo=FALSE}
+summary(Soybean)
+```
+The predictors that are missing more data are: hail, sever, seed.tmt, leaf.halo, leaf.marg, leaf.size, leaf.shred, leaf.malf, leaf.mild, lodging, fruiting.bodies, fruit.pods, fruit.spots, seed, mold.growth, seed.discolor, seed.size and shriveling.
+
+```{r class-and-NA, echo=TRUE}
+soybean_na <- Soybean %>% 
+  group_by(Class) %>%
+  summarise_all(funs(sum(is.na(.)))) 
+
+soybean_na$na_sum <- rowSums(soybean_na[,2:36])
+soybean_na
+```
+
+
+There is a relationship between the Class and the absence of data.  There are many missing values for the following classes: 2-4-d-injury, cyst-nematode, diaporthe-pod-&-stem-blight, herbicide-injury and phytophthora.  There is also a relationship within each class for the variables that are more likely to have missing data.
+
+c)  Develop a strategy for handling missing data, either by eliminating predictors or imputation.
+
+For the variables that are degenerate, it is best to eliminate those as predictors.  I will therefore eliminate the following variables: leaves, leaf.shread, leaf.malf, leaf.mild, lodging, mycelium, int.discolor, sclerotia, mold.growth, seed.discolor, seed.size, shriveling and roots.  I will then look at the number of missing values remaining for each class and each variable.
+
+```{r removed-degenerate, echo=TRUE}
+soybean_remove_degen <- subset(Soybean, select=-c(leaves,leaf.shread,leaf.malf, leaf.mild, lodging, mycelium, int.discolor, sclerotia, mold.growth, seed.discolor, seed.size, shriveling, roots))
+
+soybean_rem_deg_na <- soybean_remove_degen %>% 
+  group_by(Class) %>%
+  summarise_all(funs(sum(is.na(.)))) 
+
+soybean_rem_deg_na$na_sum <- rowSums(soybean_rem_deg_na[,2:23])
+soybean_rem_deg_na
+```
+
+There are still a significant number of missing variables for the following Classes: 2-4-d-injury, cyst-nematode, diaporthe-pod-&-stem-blight, herbicide-injury and phytophthora-rot.
+
+I will impute the median for the missing values. 
+```{r impute, echo=TRUE}
+med_date <- median(is.numeric(soybean_remove_degen$date), na.rm=T)
+soybean_remove_degen$date[is.na(soybean_remove_degen$date)] <- med_date
+
+med_plant <- median(is.numeric(soybean_remove_degen$plant.stand), na.rm=T)
+soybean_remove_degen$plant.stand[is.na(soybean_remove_degen$plant.stand)] <- med_plant
+
+med_precip <- median(is.numeric(soybean_remove_degen$precip), na.rm=T)
+soybean_remove_degen$precip[is.na(soybean_remove_degen$precip)] <- med_precip
+
+med_temp <- median(is.numeric(soybean_remove_degen$temp), na.rm=T)
+soybean_remove_degen$temp[is.na(soybean_remove_degen$temp)] <- med_temp
+
+med_hail <- median(is.numeric(soybean_remove_degen$hail), na.rm=T)
+soybean_remove_degen$hail[is.na(soybean_remove_degen$hail)] <- med_hail
+
+med_crophist <- median(is.numeric(soybean_remove_degen$crop.hist), na.rm=T)
+soybean_remove_degen$crop.hist[is.na(soybean_remove_degen$crop.hist)] <- med_crophist
+
+med_area <- median(is.numeric(soybean_remove_degen$area.dam), na.rm=T)
+soybean_remove_degen$area.dam[is.na(soybean_remove_degen$area.dam)] <- med_area
+
+med_sever <- median(is.numeric(soybean_remove_degen$sever), na.rm=T)
+soybean_remove_degen$sever[is.na(soybean_remove_degen$sever)] <- med_sever
+
+med_seed.tmt <- median(is.numeric(soybean_remove_degen$seed.tmt), na.rm=T)
+soybean_remove_degen$seed.tmt[is.na(soybean_remove_degen$seed.tmt)] <- med_seed.tmt
+
+med_germ <- median(is.numeric(soybean_remove_degen$germ), na.rm=T)
+soybean_remove_degen$germ[is.na(soybean_remove_degen$germ)] <- med_germ
+
+med_plant.growth <- median(is.numeric(soybean_remove_degen$plant.growth), na.rm=T)
+soybean_remove_degen$plant.growth[is.na(soybean_remove_degen$plant.growth)] <- med_plant.growth
+
+med_leaf.halo <- median(is.numeric(soybean_remove_degen$leaf.halo), na.rm=T)
+soybean_remove_degen$leaf.halo[is.na(soybean_remove_degen$leaf.halo)] <- med_leaf.halo
+
+med_leaf.marg <- median(is.numeric(soybean_remove_degen$leaf.marg), na.rm=T)
+soybean_remove_degen$leaf.marg[is.na(soybean_remove_degen$leaf.marg)] <- med_leaf.marg
+
+med_leaf.size <- median(is.numeric(soybean_remove_degen$leaf.size), na.rm=T)
+soybean_remove_degen$leaf.size[is.na(soybean_remove_degen$leaf.size)] <- med_leaf.size
+
+med_plant.growth <- median(is.numeric(soybean_remove_degen$plant.growth), na.rm=T)
+soybean_remove_degen$plant.growth[is.na(soybean_remove_degen$plant.growth)] <- med_plant.growth
+
+med_stem <- median(is.numeric(soybean_remove_degen$stem), na.rm=T)
+soybean_remove_degen$stem[is.na(soybean_remove_degen$stem)] <- med_stem
+
+med_stem.cankers <- median(is.numeric(soybean_remove_degen$stem.cankers), na.rm=T)
+soybean_remove_degen$stem.cankers[is.na(soybean_remove_degen$stem.cankers)] <- med_stem.cankers
+
+med_canker.lesion <- median(is.numeric(soybean_remove_degen$canker.lesion), na.rm=T)
+soybean_remove_degen$canker.lesion[is.na(soybean_remove_degen$canker.lesion)] <- med_canker.lesion
+
+med_fruiting.bodies <- median(is.numeric(soybean_remove_degen$fruiting.bodies), na.rm=T)
+soybean_remove_degen$fruiting.bodies[is.na(soybean_remove_degen$fruiting.bodies)] <- med_fruiting.bodies
+
+med_ext.decay <- median(is.numeric(soybean_remove_degen$ext.decay), na.rm=T)
+soybean_remove_degen$ext.decay[is.na(soybean_remove_degen$ext.decay)] <- med_ext.decay
+
+med_fruit.pods <- median(is.numeric(soybean_remove_degen$fruit.pods), na.rm=T)
+soybean_remove_degen$fruit.pods[is.na(soybean_remove_degen$fruit.pods)] <- med_fruit.pods
+
+med_fruit.spots <- median(is.numeric(soybean_remove_degen$fruit.spots), na.rm=T)
+soybean_remove_degen$fruit.spots[is.na(soybean_remove_degen$fruit.spots)] <- med_fruit.spots
+
+med_seed <- median(is.numeric(soybean_remove_degen$seed), na.rm=T)
+soybean_remove_degen$seed[is.na(soybean_remove_degen$seed)] <- med_seed
+
+head(soybean_remove_degen)
+```
+
+

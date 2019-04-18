@@ -1,0 +1,137 @@
+---
+title: "DATA 624 HW 2"
+author: "Sarah Wigodsky"
+date: "February 14, 2019"
+output: html_document
+---
+
+3.1) For the following series, find an appropriate Box-Cox transformation in order to stabilize the variance. 
+usnetelec
+usgdp
+mcopper
+enplanements
+
+```{r usnetelec, echo=TRUE, warning=FALSE, message=FALSE}
+library(fpp2)
+autoplot(usnetelec) + ylab("Annual US Electricity Generation (billion kWh)") +  ggtitle("Annual US Net Electricity Generation")
+lambda_usnetelec <- BoxCox.lambda(usnetelec)
+lambda_usnetelec
+autoplot(BoxCox(usnetelec,lambda_usnetelec)) +  ggtitle("Box Cox Transformation of Annual US Net Electricity Generation")
+```
+
+The plot of annual electricity generation in the US shows an upward trend and no seasonality.  The plot of electricity generation shows little variance as time progresses.  The BoxCox.lambda function was used to choose a value for lambda to make the size of the seasonal variation constant.  The value of lambda chosen is 0.52.  The transformed data is more linear and has less variance.
+
+```{r usgdp, echo=TRUE, warning=FALSE, message=FALSE}
+autoplot(usgdp) + ylab("Quarterly US GDP") +  ggtitle("Quarterly US GDP")
+lambda_usgdp <- BoxCox.lambda(usgdp)
+lambda_usgdp
+autoplot(BoxCox(usgdp,lambda_usgdp)) +  ggtitle("Box Cox Transformation of Quarterly US GDP")
+```
+
+The plot of quarterly US GDP shows an upward trend and no apparent seasonality.  The BoxCox.lambda function was used to choose a value for lambda to make the size of the seasonal variation constant.  The value of lambda chosen is 0.37.  The transformed data is more linear and has less variation than the original data.
+
+
+```{r mcopper, echo=TRUE, warning=FALSE, message=FALSE}
+library(fpp2)
+autoplot(mcopper) + ylab("Monthly Copper Prices") +  ggtitle("Monthly Copper Prices")
+lambda_mcopper <- BoxCox.lambda(mcopper)
+lambda_mcopper
+autoplot(BoxCox(mcopper,lambda_mcopper)) +  ggtitle("Box Cox Transformation of Monthly Copper Prices")
+```
+
+The plot of monthly copper prices shows an upward trend and cyclic behavior.  There is less variation between 1960 and 1970 and a sharp increase in price around 2007.  The BoxCox.lambda function was used to choose a value for lambda to make the size of the seasonal variation constant.  The value of lambda chosen is 0.19.  The transformed data shows more consistent variation throughout and a less prominent spike.  
+
+```{r enplanements, echo=TRUE, warning=FALSE, message=FALSE}
+library(fpp2)
+autoplot(enplanements) + ylab("Domestic Revenue Enplanements (millions)") +  ggtitle("Monthly US Domestic Revenue from People Boarding Airplanes")
+lambda_enplanements <- BoxCox.lambda(enplanements)
+lambda_enplanements
+autoplot(BoxCox(enplanements,lambda_enplanements)) +  ggtitle("Box Cox Transformation of Monthly US Domestic Revenue from People Boarding Airplanes")
+```
+
+The plot of monthly US domestic enplanements shows an upward trend and a seasonality of 1 year.  There is less seasonal variation from 1978 through 1985 than there is in the rest of the data set. There is large dip in enplanements around 2002.  The BoxCox.lambda function was used to choose a value for lambda to make the size of the seasonal variation constant.  The value of lambda chosen is -0.23.  The transformed data has less seasonal variation throughout.
+
+
+3.2)  Why is a Box-Cox transformation unhelpful for the cangas data?
+
+```{r cangas, echo=TRUE}
+autoplot(cangas) + ylab("Monthly Canadian Gas Production (billions of cubic meters)") +  ggtitle("Canadian Gas Production")
+lambda_cangas <- BoxCox.lambda(cangas)
+autoplot(BoxCox(cangas,lambda_cangas)) +  ggtitle("Box Cox Transformation of Canadian Gas Production")
+```
+
+
+The plot of monthly Canadian gas production displays a seasonality of 1 year and a seasonal variance that is relatively low from 1960 through 1978, larger from 1978 through 1988 and smaller from 1988 through 2005.  Because the seasonal variation increases and then decreases, the Box Cox transformation cannot be used to make the seasonal variation uniform. 
+
+3.3) What Box-Cox transformation would you select for your retail data (from Exercise 3 in Section 2.10)?
+
+```{r load-data-retail, echo=TRUE}
+retaildata <- readxl::read_excel("retail.xlsx", skip=1)
+myts <- ts(retaildata[,"A3349399C"],frequency=12, start=c(1982,4))
+autoplot(myts) + ylab("Retail Clothing Sales") + ggtitle("New South Wales - Clothing Sales")
+lambda_retail <- BoxCox.lambda(myts)
+lambda_retail
+autoplot(BoxCox(myts,lambda_retail)) +  ggtitle("Box Cox Transformation of Retail Clothing Sales in New South Wales")
+```
+
+The plot of clothing sales in New South Wales shows an upward trend and a seasonality of 1 year.  The seasonal variation increases with time. The BoxCox.lambda function was used to choose a value for lambda to make the size of the seasonal variation constant.  The value of lambda chosen is 0.02.  The transformed data has less seasonal variation throughout.
+
+3-8) For your retail time series (from Exercise 3 in Section 2.10):
+a) Split the data into two parts using
+
+```{r train-test, echo=TRUE}
+myts.train <- window(myts, end=c(2010,12))
+myts.test <- window(myts, start=2011)
+```
+
+This creates a training set that ends in December of 2010 and a testing set that begins in 2011.
+
+
+b) Check that your data have been split appropriately by producing the following plot.
+```{r plots-of-train-test, echo=TRUE}
+autoplot(myts) +
+  autolayer(myts.train, series="Training") +
+  autolayer(myts.test, series="Test")
+```
+
+The training set is shown in blue up until 2011, which is where the testing set, shown in red, is visible.
+
+c) Calculate forecasts using snaive applied to myts.train.
+```{r}
+fc <- snaive(myts.train)
+```
+
+Forecasts are made using the seasonal naive method.
+
+d) Compare the accuracy of your forecasts against the actual values stored in myts.test.
+
+```{r accuracy, echo=TRUE}
+accuracy(fc,myts.test)
+autoplot(myts) +
+  autolayer(myts.train, series="Training") +
+  autolayer(myts.test, series="Test") +
+  autolayer(fc, series="prediction")
+```
+
+The mean error for the training set is 9 and the mean error for the test set is about 10.  These values are low and similar for the training and test set.
+
+The root mean square error is very similar for the training and testing set and is about 21.  The mean absolute error is very similar for the training and testing set, and is about 17.  The root mean square error is more affected by outliers than the mean absolute error. Since the MAE and RMSE are close in value, this indicates that there is little variance in the errors.  The RMSE and MAE for the training and testing sets being similar suggests that the model does not suffer from over fitting.  
+
+The mean percentage error is 4.2% for the training set and 2.8% for the testing set.  This value takes into account whether the predicted value is above or below the actual value.  The mean absolute percentage error is 7.5% for the training set and 5.5% for the testing test.  This value is the average percent difference between the actual values and the predicted values, without concern of which is larger. These values are relatively low, indicating a good prediction model was built.  Both the MPE and MAPE are more affected by negative error.
+
+The mean absolute scaled error is 1 for the training set and 1.5 for the testing set.
+
+
+e) Check the residuals.
+
+```{r residuals, echo=TRUE}
+checkresiduals(fc)
+```
+
+Do the residuals appear to be uncorrelated and normally distributed?  
+
+The residuals are centered a little above zero and follow a fairly normal distribution.  About 31% of the residuals lie outside the boundary that would indicate white noise. A value less than 5% would indicate that the residuals were uncorrelated.  Furthermore, the values for the initial 8 lags display a decrease, which indicates that the residuals are correlated.  
+
+f) How sensitive are the accuracy measures to the training/test split?
+
+The errors for the test and train set are fairly similar.  The test set has slightly larger errors that the training set for the mean error, root mean square error, mean absolute error, mean absolute scaled error and auto correlation function.  The test set has a lower error for the mean percentage error and the mean absolute percentage error.

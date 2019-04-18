@@ -1,0 +1,295 @@
+---
+title: "DATA624_HW8_NonLinearRegression"
+author: "Sarah Wigodsky"
+date: "April 10, 2019"
+output: html_document
+---
+Kuhn and Johnson
+
+7.2) Friedman (1991) introduced several benchmark data sets created by simulation.  One of these simulations used the following nonlinear equation to create data.
+
+y = 10sin($\pi$$x_1x_2$) + 20($x_3$ - 0.5)$^2$ + 10$x_4$ + 5$x_5$ + N(0,$\sigma^2$)
+
+where the x values are random variables uniformly distributed between [0,1] (there are also 5 other non-informative variables also created in the simulation).  The package mlbench contains a function called mlbench.friedman1 that simulates these data.
+
+```{r, echo=TRUE, cache=TRUE, warning=FALSE,message=FALSE}
+library(mlbench)
+library(caret)
+set.seed(200)
+trainingData <- mlbench.friedman1(200, sd=1)
+##We conver the 'x' data from a matrix to a dataframe.
+##One reason is that this will give us column names.
+trainingData$x <- data.frame(trainingData$x)
+##Look at the data using
+featurePlot(trainingData$x, trainingData$y)
+##This creates a list with a vector 'y' and a matrix of predictors 'x'.
+```
+
+There appears to be a positive correlation between the predictor variables x1, x2, x4, and x5 with y.  There does not appear to be any correlation between the predictor variables x3, x6, x7, x8, x9 and x10 with y.
+
+Estimate the true error rate with good precision: 
+```{r estimate-true-error, echo=TRUE, cache=TRUE}
+testData <- mlbench.friedman1(5000, sd=1)
+testData$x <- data.frame(testData$x)
+```
+
+Tune several models on these data.  For example:
+```{r knn, echo=TRUE, cache=TRUE}
+knnModel <- train(x=trainingData$x,
+                  y=trainingData$y,
+                  method="knn",
+                  preProc=c("center","scale"),
+                  tuneLength = 10)
+knnModel
+
+knnPred <- predict(knnModel, newdata = testData$x)
+##The function 'postResample' can be used to get the test set performance values
+postResample(pred=knnPred,obs=testData$y)
+```
+
+
+MARS (Multivariate Adaptive Regression Splines)
+```{r mars, echo=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
+library(earth)
+marsFit <- earth(trainingData$x, trainingData$y)
+marsFit
+
+varImp(marsFit)
+marsPred_simple <- predict(marsFit, newdata = testData$x)
+postResample(pred=marsPred_simple,obs=testData$y)
+```
+
+```{r marsGrid1, echo=TRUE, cache=TRUE}
+marsGrid <- expand.grid(.degree=1:4, .nprune=2:30)
+set.seed(50)
+marsTuned <- train(trainingData$x,
+                   trainingData$y,
+                   method="earth",
+                   tuneGrid = marsGrid,
+                   trControl = trainControl(method="cv"))
+#marsTuned
+varImp(marsTuned)
+plot(marsTuned)                   
+marsPred <- predict(marsTuned, newdata = testData$x)
+##The function 'postResample' can be used to get the test set performance values
+postResample(pred=marsPred,obs=testData$y)                   
+```
+
+Support Vector Machines
+
+```{r svm, echo=TRUE, cache=TRUE, warning=FALSE, message=FALSE}
+library(kernlab)
+
+svmRTuned <- train(trainingData$x, trainingData$y,
+                   method="svmRadial", 
+                   preProc=c("center","scale"),
+                   tuneLength = 14,
+                   trControl = trainControl(method="cv"))
+svmRTuned
+svmRTuned$finalModel
+svmPred <- predict(svmRTuned, newdata = testData$x)
+postResample(pred=svmPred,obs=testData$y)  
+```
+
+Linear Kernel
+
+```{r svm2, echo=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
+svmRTuned <- train(trainingData$x, trainingData$y,
+                   method="svmLinear", 
+                   preProc=c("center","scale"),
+                   tuneLength = 14,
+                   trControl = trainControl(method="cv"))
+svmRTuned
+svmRTuned$finalModel
+svmPred <- predict(svmRTuned, newdata = testData$x)
+postResample(pred=svmPred,obs=testData$y)  
+```
+
+Neural Networks
+```{r neural-network, echo=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
+library(nnet)
+nnetFit <- nnet(trainingData$x, trainingData$y,
+                size=5,
+                decay=0.01,
+                trace=FALSE,
+                maxit=500,
+                MaxNWts=5*(ncol(trainingData$x)+1)+5+1)
+
+nnetFit
+nnetPred <- predict(nnetFit, newdata = testData$x)
+postResample(pred=nnetPred,obs=testData$y)
+```
+
+
+```{r neural-network2, echo=TRUE,cache=TRUE, message=FALSE,warning=FALSE}
+tooHigh <- findCorrelation(cor(trainingData$x),cutoff=0.7)
+
+trainXnnet <- trainingData$x[,-tooHigh]
+testXnnet <- testData$x[,-tooHigh]
+
+nnetGrid <- expand.grid(.decay=c(0,0.01,.1),
+                       .size=c(1:10),
+                       .bag=FALSE)
+set.seed(100)
+nnetTune <- train(trainingData$x, trainingData$y,
+                method="avNNet",
+                tuneGrid = nnetGrid,
+                trControl = trainControl(method="cv",number=10),
+                preProc=c("center","scale"),
+                linout=TRUE,
+                trace=FALSE,
+                MaxNWts =10*(ncol(trainingData$x)+1) +10 +1,
+                maxit=500)
+
+nnetTune
+nnetPred <- predict(nnetTune, newdata = testData$x)
+postResample(pred=nnetPred,obs=testData$y)
+```
+
+```{r compare-models, echo=TRUE, warning=FALSE, message=FALSE}
+library(knitr)
+compare_table <- data.frame(list(knn=3.18,MARS_Fit=1.81, MARS_Tuned=1.17, SVM_radial=2.08, SVM_linear=2.76, NeuralNet_Fit=14.3, NeuralNet_Tune=2.16), stringsAsFactors=FALSE)
+rownames(compare_table) <- c("RMSE")
+kable(compare_table, caption="Model Comparison")
+```
+
+
+The model with the lowest root mean square error is the tuned MARS model.  The model had 14 terms (nprune = 14) and was of degree = 2. MARS selects the informative predictors: x1, x4, x2, x5 and x3.
+
+7.5)  Exercise 6.3 describes data for a chemical manufacturing process.  Use the same data imputation, data splitting and pre-processing steps as before and train several nonlinear regression models.
+
+a) Which nonlinear regression model gives the optimal resampling and test set performance?
+
+The data set ChemicalManufacturingProcess is loaded.  
+I imputed the median of a column for missing values.
+The data is separated into a training set and testing set.
+Preprocess data to remove 19 highly correlated variables.
+
+```{r load-chem-man, echo=TRUE, warning=FALSE, message=FALSE}
+library(AppliedPredictiveModeling)
+data("ChemicalManufacturingProcess")
+impute.median <- function(x) replace(x, is.na(x), median(x, na.rm = TRUE))
+for (i in 1:ncol(ChemicalManufacturingProcess)){
+  ChemicalManufacturingProcess[,i] <- impute.median(ChemicalManufacturingProcess[,i])
+}
+train_chem <- ChemicalManufacturingProcess[1:130,]
+test_chem <- ChemicalManufacturingProcess[131:176,]
+
+highCorr_chem <- findCorrelation(cor(train_chem[,2:58]), cutoff=.7, exact=TRUE)
+length(highCorr_chem)
+filtered_train_chem <- train_chem[,-highCorr_chem]
+ncol(filtered_train_chem)
+correlation_chem <- cor(filtered_train_chem, method = "pearson")
+#summary(ChemicalManufacturingProcess)
+```
+
+Nonlinear Regression Models
+
+k Nearest Neighbors
+```{r knn-chem, echo=TRUE, cache=TRUE, message=FALSE, warning=FALSE}
+knnModel_chem <- train(x=train_chem[,-1],
+                  y=train_chem$Yield,
+                  method="knn",
+                  preProc=c("center","scale"),
+                  tuneLength = 10)
+knnModel_chem
+
+knnPred_chem <- predict(knnModel_chem, newdata = test_chem[,-1])
+##The function 'postResample' can be used to get the test set performance values
+postResample(pred=knnPred_chem,obs=test_chem$Yield)
+```
+
+MARS
+
+
+```{r mars2, echo=TRUE, cache=TRUE}
+marsGrid <- expand.grid(.degree=1:4, .nprune=2:30)
+set.seed(50)
+marsTuned <- train(x=train_chem[,-1],
+                   y=train_chem$Yield,
+                   method="earth",
+                   tuneGrid = marsGrid,
+                   trControl = trainControl(method="cv"))
+#marsTuned
+varImp(marsTuned)
+plot(marsTuned)                   
+marsPred <- predict(marsTuned, newdata = test_chem[,-1])
+##The function 'postResample' can be used to get the test set performance values
+postResample(pred=marsPred,obs=test_chem$Yield)                   
+```
+
+Support Vector Machines
+Radial Basis Kernel
+```{r svm_chem_rad, echo=TRUE, cache=TRUE, warning=FALSE, message=FALSE}
+svmRTuned_rad <- train(x=train_chem[,-1],
+                   y=train_chem$Yield,
+                   method="svmRadial", 
+                   preProc=c("center","scale"),
+                   tuneLength = 14,
+                   trControl = trainControl(method="cv"))
+svmRTuned_rad
+svmRTuned_rad$finalModel
+svmPred_rad <- predict(svmRTuned_rad, newdata = train_chem[,-1])
+postResample(pred=svmPred_rad,obs=train_chem$Yield)  
+```
+
+Linear Kernel
+```{r svm-chem, echo=TRUE, cache=TRUE, warning=FALSE, message=FALSE}
+svmRTuned <- train(x=train_chem[,-1],
+                   y=train_chem$Yield,
+                   method="svmLinear", 
+                   preProc=c("center","scale"),
+                   tuneLength = 14,
+                   trControl = trainControl(method="cv"))
+svmRTuned
+svmRTuned$finalModel
+svmPred_lin <- predict(svmRTuned, newdata = train_chem[,-1])
+postResample(pred=svmPred_lin,obs=train_chem$Yield)  
+```
+
+Neural Network
+```{r nnet_chem, echo=TRUE, warning=FALSE,message=FALSE, cache=TRUE}
+nnetFit_chem <- nnet(x=train_chem[,-1],
+                y=train_chem$Yield,
+                size=5,
+                decay=c(0,0.01,.1),
+                trace=FALSE,
+                maxit=500,
+                MaxNWts=5*(ncol(train_chem[,-1])+1)+5+1)
+
+nnetFit_chem
+nnetPred_chem <- predict(nnetFit_chem, newdata = test_chem[,-1])
+postResample(pred=nnetPred_chem,obs=test_chem$Yield)
+```
+
+```{r compare-models_chem, echo=TRUE, warning=FALSE, message=FALSE}
+
+compare_table <- data.frame(list(knn=1.82, MARS_Tuned=2.37, SVM_radial=0.17, SVM_linear=0.68, NeuralNet=37.98), stringsAsFactors=FALSE)
+rownames(compare_table) <- c("RMSE")
+kable(compare_table, caption="Model Comparison")
+```
+
+The Support Vector Machine using a radial basis function gave a model with the lowest root mean square error.
+
+b) Which predictors are most important in the optimal nonlinear regression model?  Do either the biological or process variables dominate the list?  How do the top ten important predictors compare to the top ten predictors from the optimal linear model?
+
+```{r top-10-pred, echo=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
+Imp_chem <- varImp(svmRTuned_rad)
+plot(Imp_chem, top = 10)
+```
+
+The manufacturing process variables are the most important predictors in the SVM model.
+
+Biological Material 06 and Manufacturing Process 36 are among the top 10 predictors for the top linear model and top nonlinear models. 
+
+c) Explore the relationships between the top predictors and the response for the predictors that are unique to the optimal nonlinear regression model.  Do these plots reveal intuition about the biological or process predictors and their relationship with yield?
+
+```{r relationship-chem, echo=TRUE, message=FALSE,warning=FALSE, cache=TRUE}
+top_predictors <- ChemicalManufacturingProcess[,c("Yield","ManufacturingProcess17","ManufacturingProcess13","ManufacturingProcess09","ManufacturingProcess32","BiologicalMaterial06","ManufacturingProcess06","ManufacturingProcess11","ManufacturingProcess36","ManufacturingProcess30","ManufacturingProcess03")]
+#head(top_predictors)
+correlation_chem_top_pred <- cor(top_predictors, method = "pearson")
+corrplot::corrplot(correlation_chem_top_pred, type="upper", method="color")
+```
+
+
+The yield is positively correlated to biological process 06, manufacturing process 09,32,06,11 and 30.  The yield is negatively correlated to manufacturing process 17, 13 and 36.  The correlations are fairly weak.  

@@ -1,0 +1,227 @@
+---
+title: "HW_7_LinearRegression"
+author: "Sarah Wigodsky"
+date: "April 1, 2019"
+output: html_document
+---
+
+Kuhn and Johnson
+
+6-2) Developing a model to predict permeability could save significant resources for a pharmaceutical company, while at the same time more rapidly identifying molecules that have a sufficient permeability to become a drug:
+
+a) 
+
+```{r setup, echo=TRUE, warning=FALSE, message=FALSE}
+library(AppliedPredictiveModeling)
+library(ggplot2)
+library(caret)
+data(permeability)
+```
+
+The permeability data set consists of permeability values for 165 compounds.
+
+b) The fingerprints predictors indicate the presence or absence of the substructures of a molecule and are often sparse meaning that relatively few of the molecules contain each substructure.  Filter out the predictors that have low frequencies using the nearZeroVar function from the caret package.  How many predictors are left for modeling?
+
+```{r remove-predictors, echo=TRUE}
+
+fingerprints_pred <- fingerprints[, -nearZeroVar(fingerprints)]
+ncol(fingerprints_pred)
+```
+
+There are 388 predictors left for modeling.
+
+c) Split the data into a training and a test set, pre-process the data, and tune a PLS model.  How many latent variables are optimal and what is the corresponding resampled estimate of R$^2$?
+
+```{r test-train, echo=TRUE}
+train <- fingerprints_pred[1:130,]
+test <- fingerprints_pred[131:165,]
+
+perm_train <- permeability[1:130]
+perm_test <- permeability[131:165]
+```
+
+Pre-processing the Data:  Remove highly correlated predictors
+
+```{r correlation of predictors, echo=FALSE}
+library(corrplot)
+highCorr <- findCorrelation(cor(fingerprints_pred), cutoff=.7, exact=TRUE)
+length(highCorr)
+filtered_train <- train[,-highCorr]
+ncol(filtered_train)
+correlation <- cor(filtered_train, method = "pearson")
+corrplot::corrplot(correlation, type="upper", method="color")
+
+#xTrans <- preProcess(filtered_train) 
+#trainDescr <- predict(xTrans, filtered_train) 
+#testDescr <- predict(xTrans, test)
+```
+
+After removing predictors with correlations above 0.70, there are 51 predictors remaining.  (337 predictors were removed.)
+
+```{r pls, echo=TRUE, warning=FALSE, message=FALSE, cache=TRUE}
+#library(pls)
+set.seed(100)
+#permeability_factor <- factor(perm_train)
+ctrl <- trainControl(method="cv", number=10)
+plsTune <- train(filtered_train,perm_train,
+                 method="pls",
+                 tuneLength=20,
+                 trControl=ctrl,
+                 preProc=c("center","scale"))
+
+plsTune$bestTune
+plsTune$results
+summary(plsTune)
+```
+
+There are 6 optimal latent variables.
+That model has an R$^2$ = 0.526 and RMSE = 11.1. 
+
+d)  Predict the response for the test set. What is the test set estimate of R$^2$?
+```{r pred_test_set, echo=TRUE}
+prediction_model <- predict(plsTune, newdata=test)
+cor(as.numeric(prediction_model), perm_test) ^ 2
+```
+
+R$^2$ = 0.44 for the test set
+
+e) Try building other models discussed in this chapter.  Do any have better predictive performance?
+
+Ordinary Linear Regression
+```{r OLR, echo=TRUE, cache=TRUE}
+lm_permeability <- lm(perm_train ~ ., data=data.frame(filtered_train))
+predict_olr <- predict(lm_permeability,data.frame(test))
+summary(lm_permeability)
+cor((predict_olr), perm_test) ^ 2
+```
+R$^2$ = 0.67 for the training set
+R$^2$ = 0.33 for the test set
+
+Ridge Regression
+```{r ridge-reg-permeability, echo=TRUE, cache=TRUE}
+#library(elasticnet)
+
+ridgeGrid <- data.frame(.lambda=seq(0,.1,length=15))
+ridgeRegFit <- train(filtered_train,perm_train,
+                     method="ridge",
+                     tuneGrid=ridgeGrid,
+                     trControl=ctrl,
+                     preProc = c("center","scale"))
+ridgeRegFit
+#summary(ridgeRegFit)
+ridgeRegFit$bestTune
+ridgeRegFit$results
+```
+
+The optimal model has lambda=0.1.  That is associated with an R$^2$=0.48 and RMSE=11.95.
+
+
+```{r ridge_pred_test_set, echo=TRUE}
+
+ridge_prediction_model <- predict(ridgeRegFit, newdata=test)
+
+cor(as.numeric(ridge_prediction_model), perm_test) ^ 2
+```
+
+R$^2$ = 0.43 for the training set
+
+The PLS model has the highest R$^2$ and the best predictive performance.
+
+f) Would you recommend any of you models to replace the permeability laboratory experiment?
+I would not recommend that my models replace the permeability laboratory experiment because the highest R$^2$ value was 0.44, which means that 44% of the variation in the data can be explained by that model.  I think that is too low of a value to rely on that and the experiment should not be replaced.
+
+6.3) A chemical manufacturing process for a pharmaceutical product was discussed in section 1.4.  In this problem, the objective is to understand the relationship between biological measurements of the raw materials (predictors), measurements of the manufacturing process (predictors), and the response of the product yield.  Biological predictors cannot be changed but can be used to assess the quality of the raw material before processing.  On the other hand, manufacturing predictors can be changed in the manufacturing process.  Impoving product yield by 1% will boost revenue by approximately one hundred thousand dollars per batch:
+
+a) load data
+```{r load-chem-man, echo=TRUE}
+library(AppliedPredictiveModeling)
+data("ChemicalManufacturingProcess")
+#head(ChemicalManufacturingProcess)
+```
+
+The matrix processPredictors contains 57 predictors (12 describing the input biologcal material and 45 describing the process predictors) for the 176 manufacturing runs. yield contains the percent yield for each run.
+
+b) A small percentage of cells in the predictor set contain missing values.  Use an imputation function to fill in therese missing values.
+
+```{r impute, echo=FALSE, warning=FALSE, message=FALSE, cache=TRUE}
+#summary(ChemicalManufacturingProcess)
+library(mice)
+chem_imputed <- mice(data = ChemicalManufacturingProcess,m=5,maxit=40,meth='pmm',seed=500,printFlag = FALSE)
+completedData <- complete(chem_imputed,1)
+#summary(completedData)
+```
+
+c)  Split the data into a training and a test set, pre-process the data, and tune a model of your choice from this chapter.  What is the optimal value of the performance metric?
+
+```{r remove-predictors-chem, echo=TRUE}
+#chem_pred <- completedData[, -nearZeroVar(completedData)]
+#ncol(chem_pred)
+#head(chem_pred)
+```
+
+
+```{r train-test-chem, echo=TRUE}
+train_chem <- completedData[1:130,]
+test_chem <- completedData[131:176,]
+```
+
+
+Pre-processing the Data:  Remove highly correlated predictors
+
+```{r correlation-of-predictors-chem, echo=FALSE, cache=TRUE}
+highCorr_chem <- findCorrelation(cor(train_chem[,2:58]), cutoff=.7, exact=TRUE)
+length(highCorr_chem)
+filtered_train_chem <- train_chem[,-highCorr_chem]
+ncol(filtered_train_chem)
+correlation_chem <- cor(filtered_train_chem, method = "pearson")
+#corrplot(correlation_chem, type="upper", method="color")
+```
+
+There are 19 correlated variables that I am removing.
+
+
+```{r pls-chem, echo=TRUE, warning=FALSE, message=FALSE, cache=TRUE}
+set.seed(100)
+#permeability_factor <- factor(perm_train)
+plsTune_chem <- train(filtered_train_chem[,2:39],filtered_train_chem[,1],
+                 method="pls",
+                 tuneLength=20,
+                 trControl=ctrl,
+                 preProc=c("center","scale"))
+plsTune_chem$bestTune
+plsTune_chem$results
+summary(plsTune_chem)
+```
+
+The model is built using 5 components.  The best model is picked based on having the lowest RMSE, which is 1.76.  The R$^2$ for the model is 0.84. 84% of the variation in the data is explained by this model. 
+
+d)  Predict the response for the test set.  What is the value of the performance metric and how does this compare with the resampled performance metric on the training set?
+
+```{r pred_test_set_ chem, echo=TRUE, cache=TRUE}
+prediction_model_chem <- predict(plsTune_chem, newdata=test_chem[,2:58])
+cor(as.numeric(prediction_model_chem), test_chem[,1]) ^ 2
+```
+
+The R$^2$ is .12.  This means that 12% of the variation in the data is explained by this model.
+
+e) What predictors are most important in the model you have trained?  Do either the biological or process predictors dominate the list?
+
+```{r importance, echo=TRUE, fig.height=10, warning=FALSE, message=FALSE}
+Imp <- varImp(plsTune_chem)
+plot(Imp, top = 60)
+```
+
+The 4 most important predictors are biological predictors.  However the vast majority of the important predictors are manufacturing process predictors.
+
+f) Explore the relationships between each of the top predictors and the response.  How could this information be helpful in improving the yield in future runs of the manufacturing process?
+
+```{r correlation-chem, echo=FALSE, fig.height=10}
+
+top_predictors <- completedData[,c("Yield","BiologicalMaterial06","BiologicalMaterial11","BiologicalMaterial04","BiologicalMaterial12","ManufacturingProcess02","ManufacturingProcess33", "ManufacturingProcess36", "ManufacturingProcess15")]
+#head(top_predictors)
+correlation_chem_top_pred <- cor(top_predictors, method = "pearson")
+corrplot::corrplot(correlation_chem_top_pred, type="upper", method="color")
+```
+
+
+Yield is negatively correlated with Manufacturing Process 36 and positively correlated with Biological Material 06.  The biological predictors cannot be changed, but the Manufacturing Processes can be changed.  I would recommend minimizing Manufacturing Process 36 to enhance the yield.
